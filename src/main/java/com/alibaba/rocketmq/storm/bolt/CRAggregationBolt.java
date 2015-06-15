@@ -46,7 +46,7 @@ public class CRAggregationBolt implements IRichBolt, Constant {
     private static final String COLUMN_FAMILY = "t";
 
     private static final String COLUMN_CLICK = "click";
-    private static final String COLUMN_CONVERSION = "conv";
+    private static final String COLUMN_CONVERSION = "conversion";
     private static final Charset DEFAULT_CHARSET = Charset.forName("UTF-8");
 
     private static final int HBASE_MAX_RETRY_TIMES = 5;
