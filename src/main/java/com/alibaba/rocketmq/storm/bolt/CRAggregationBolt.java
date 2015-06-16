@@ -209,11 +209,11 @@ public class CRAggregationBolt implements IRichBolt, Constant {
                             }
 
                             LOG.debug("[Click] Key = " + click.toString());
-                            LOG.debug("[Conversion] Key = " + conversion.toString());
+                            LOG.debug("[Conv] Key = " + conversion.toString());
 
                             data.put(COLUMN_CLICK, click.toString().getBytes(DEFAULT_CHARSET));
                             data.put(COLUMN_CONVERSION, conversion.toString().getBytes(DEFAULT_CHARSET));
-                            redisCacheMap.put(rowKey, "{click: " + click + ", conversion: " + conversion + "}");
+                            redisCacheMap.put(rowKey, "{click: " + click + ", conv: " + conversion + "}");
                             HBaseData hBaseData = new HBaseData(TABLE_NAME, rowKey, COLUMN_FAMILY, data);
                             hBaseDataList.add(hBaseData);
                         }
