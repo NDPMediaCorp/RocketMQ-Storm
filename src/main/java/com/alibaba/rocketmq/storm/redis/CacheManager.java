@@ -5,9 +5,7 @@ import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Transaction;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * <p>
@@ -115,6 +113,46 @@ public class CacheManager {
 
     public long calculateSize() {
         return jedis.dbSize();
+    }
+
+    public Long zadd(String key, double score, String value){
+        Long result = jedis.zadd(key,score,value);
+        expireAt(key,secondFromTomorrowZero());
+        return result;
+    }
+
+    public Long sadd(String key, String... value){
+        Long result = jedis.sadd(key,value);
+        expireAt(key,secondFromTomorrowZero());
+        return result;
+    }
+
+    public Double zscore(String key, String value){
+        return jedis.zscore(key,value);
+    }
+
+    public Long zaddAndIncScore(String key,double score,String value){
+        Double existsScore = zscore(key,value);
+        if ( null == existsScore ){
+            existsScore = 0D;
+        }
+        score += existsScore.doubleValue();
+        return zadd(key,score,value);
+
+    }
+
+    public Long expireAt(String key, int unixTime){
+        return jedis.expireAt(key,unixTime);
+    }
+
+    public static int secondFromTomorrowZero(){
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.DAY_OF_YEAR,1);
+        cal.set(Calendar.HOUR_OF_DAY,0);
+        cal.set(Calendar.MINUTE,0);
+        cal.set(Calendar.SECOND,0);
+        return (int)cal.getTimeInMillis()/1000;
+
     }
 
 }

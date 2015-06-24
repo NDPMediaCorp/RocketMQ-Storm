@@ -1,5 +1,7 @@
 package com.alibaba.rocketmq.storm.redis;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
@@ -18,6 +20,8 @@ import java.util.ResourceBundle;
 public class RedisPoolManager {
 
 
+    private static final Logger LOG = LoggerFactory.getLogger(RedisPoolManager.class);
+
     private static JedisPool pool;
 
     static {
@@ -31,7 +35,8 @@ public class RedisPoolManager {
         config.setMaxWaitMillis(Long.valueOf(bundle.getString("redis.pool.maxWait")));
         config.setTestOnBorrow(Boolean.valueOf(bundle.getString("redis.pool.testOnBorrow")));
         config.setTestOnReturn(Boolean.valueOf(bundle.getString("redis.pool.testOnReturn")));
-
+        config.setMaxTotal(Integer.valueOf(bundle.getString("redis.pool.maxTotal")));
+        config.setMinIdle(Integer.valueOf(bundle.getString("redis.pool.minIdle")));
         pool = new JedisPool(config, bundle.getString("redis.ip"), Integer.valueOf(bundle.getString("redis.port")), 120);
     }
 
@@ -40,9 +45,13 @@ public class RedisPoolManager {
      * @return
      */
     public static Jedis createInstance() {
-        Jedis jedis = pool.getResource();
-
-        return jedis;
+        try {
+            Jedis jedis = pool.getResource();
+            return jedis;
+        }catch ( Exception e ){
+            LOG.error("RedisPoolManager.createInstance Error",e);
+        }
+        return null;
     }
 
     /**

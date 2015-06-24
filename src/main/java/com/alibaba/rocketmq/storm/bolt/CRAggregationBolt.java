@@ -176,6 +176,8 @@ public class CRAggregationBolt implements IRichBolt, Constant {
                     Map<String, String> redisCacheMap = new HashMap<>();
                     for (Map.Entry<String, HashMap<String, HashMap<String, Long>>> row : map.entrySet()) {
                         String offerId = row.getKey();
+                        long offConvCount = 0;
+                        long offClikCount = 0;
                         HashMap<String, HashMap<String, Long>> affMap = row.getValue();
                         for (Map.Entry<String, HashMap<String, Long>> affRow : affMap.entrySet()) {
                             String affId = affRow.getKey();
@@ -191,8 +193,10 @@ public class CRAggregationBolt implements IRichBolt, Constant {
                                 String event = eventRow.getKey();
                                 if (event.startsWith("C")) {
                                     click.append(event).append(": ").append(eventRow.getValue()).append(", ");
+                                    offClikCount += eventRow.getValue();
                                 } else {
                                     conversion.append(event).append(": ").append(eventRow.getValue()).append(", ");
+                                    offConvCount += eventRow.getValue();
                                 }
                             }
 
@@ -216,6 +220,11 @@ public class CRAggregationBolt implements IRichBolt, Constant {
                             redisCacheMap.put(rowKey, "{click: " + click + ", conv: " + conversion + "}");
                             HBaseData hBaseData = new HBaseData(TABLE_NAME, rowKey, COLUMN_FAMILY, data);
                             hBaseDataList.add(hBaseData);
+
+                            //Redis存储
+                            cacheManager.sadd(Constant.KEY_PRE_AFFS_IN_OFF+offerId,affId);
+                            cacheManager.zaddAndIncScore(Constant.KEY_OFFS_CLIK_COUNT,offClikCount,offerId);
+                            cacheManager.zaddAndIncScore(Constant.KEY_OFFS_CONV_COUNT,offConvCount,offerId);
                         }
                     }
 
