@@ -222,9 +222,9 @@ public class CRAggregationBolt implements IRichBolt, Constant {
                             hBaseDataList.add(hBaseData);
 
                             //Redis存储
-                            cacheManager.sadd(Constant.KEY_PRE_AFFS_IN_OFF+offerId,affId);
-                            cacheManager.zaddAndIncScore(Constant.KEY_OFFS_CLIK_COUNT,offClikCount,offerId);
-                            cacheManager.zaddAndIncScore(Constant.KEY_OFFS_CONV_COUNT,offConvCount,offerId);
+                            cacheManager.sadd(CacheManager.keyAffsInOff(offerId),affId);
+                            cacheManager.zaddAndIncScore(CacheManager.keyOffsClikCount(),offClikCount,offerId);
+                            cacheManager.zaddAndIncScore(CacheManager.keyOffsConvCount(),offConvCount,offerId);
                         }
                     }
 
