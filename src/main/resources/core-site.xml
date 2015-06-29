@@ -14,18 +14,19 @@
     <name>io.compression.codecs</name>
     <value>org.apache.hadoop.io.compress.DefaultCodec,org.apache.hadoop.io.compress.GzipCodec,org.apache.hadoop.io.compress.BZip2Codec,org.apache.hadoop.io.compress.DeflateCodec,org.apache.hadoop.io.compress.SnappyCodec,org.apache.hadoop.io.compress.Lz4Codec</value>
   </property>
-  <property>
-    <name>hadoop.security.authentication</name>
-    <value>kerberos</value>
-  </property>
-  <property>
-    <name>hadoop.security.authorization</name>
-    <value>true</value>
-  </property>
-  <property>
-    <name>hadoop.rpc.protection</name>
-    <value>authentication</value>
-  </property>
+    <!-- 测试环境不需要以下3个验证配置 -->
+  <!--<property>-->
+    <!--<name>hadoop.security.authentication</name>-->
+    <!--<value>kerberos</value>-->
+  <!--</property>-->
+  <!--<property>-->
+    <!--<name>hadoop.security.authorization</name>-->
+    <!--<value>true</value>-->
+  <!--</property>-->
+  <!--<property>-->
+    <!--<name>hadoop.rpc.protection</name>-->
+    <!--<value>authentication</value>-->
+  <!--</property>-->
   <property>
     <name>hadoop.security.auth_to_local</name>
     <value>DEFAULT</value>
