@@ -162,13 +162,13 @@ public class CacheManager {
     public static String KEY_OFFS_CONV_COUNT_ONDAY = "offs_conv_count_%s";
 
     public static String keyOffsConvCount() {
-        return String.format(KEY_OFFS_CONV_COUNT_ONDAY, DateFormatUtils.format(Calendar.getInstance(), "yyyyMMdd"));
+        return String.format(KEY_OFFS_CONV_COUNT_ONDAY, DateFormatUtils.format(Calendar.getInstance(), "yyyyMMddHH"));
     }
 
     public static String KEY_OFFS_CLIK_COUNT_ONDAY = "offs_clik_count_%s";
 
     public static String keyOffsClikCount() {
-        return String.format(KEY_OFFS_CLIK_COUNT_ONDAY, DateFormatUtils.format(Calendar.getInstance(), "yyyyMMdd"));
+        return String.format(KEY_OFFS_CLIK_COUNT_ONDAY, DateFormatUtils.format(Calendar.getInstance(), "yyyyMMddHH"));
     }
 
     public static String KEY_PRE_AFFS_IN_OFF_ONDAY = "affs_in_offer_%s_%s";
