@@ -1,5 +1,6 @@
 package com.alibaba.rocketmq.storm.redis;
 
+import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -155,8 +156,7 @@ public class CacheManager {
         cal.set(Calendar.HOUR_OF_DAY, 0);
         cal.set(Calendar.MINUTE, 0);
         cal.set(Calendar.SECOND, 0);
-        return (int) cal.getTimeInMillis() / 1000;
-
+        return Integer.valueOf(cal.getTimeInMillis() / 1000+"");
     }
 
     public static String KEY_OFFS_CONV_COUNT_ONDAY = "offs_conv_count_%s";
@@ -181,6 +181,7 @@ public class CacheManager {
         System.out.println(keyOffsConvCount());
         System.out.println(keyOffsClikCount());
         System.out.println(keyAffsInOff("111"));
+        System.out.println(secondFromNextWeekZero());
     }
 
 }

@@ -25,14 +25,15 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * <p>
- *     To aggregate CR grouping by offer ID, affiliate ID, event code.
+ * To aggregate CR grouping by offer ID, affiliate ID, event code.
  * </p>
  *
+ * @author Li Zhanhui
  * @version 1.0
  * @since 1.0
- * @author Li Zhanhui
  */
 public class CRAggregationBolt implements IRichBolt, Constant {
+
     private static final long serialVersionUID = 7591260982890048043L;
 
     private static final Logger LOG = LoggerFactory.getLogger(CRAggregationBolt.class);
@@ -53,25 +54,22 @@ public class CRAggregationBolt implements IRichBolt, Constant {
 
     private static final int REDIS_MAX_RETRY_TIMES = 5;
 
-    private AtomicReference<HashMap<String, HashMap<String, HashMap<String, Long>>>>
-            atomicReference = new AtomicReference<>();
+    private AtomicReference<HashMap<String, HashMap<String, HashMap<String, Long>>>> atomicReference = new AtomicReference<>();
 
     private AtomicLong counter = new AtomicLong(1L);
 
     private volatile boolean stop = false;
 
     @Override
-    public void prepare(@SuppressWarnings("rawtypes") Map stormConf, TopologyContext context,
-                        OutputCollector collector) {
+    public void prepare(@SuppressWarnings( "rawtypes" ) Map stormConf, TopologyContext context, OutputCollector collector) {
         this.collector = collector;
 
         /**
          * We use one worker, one executor and one task strategy.
          */
-        HashMap<String /* offer_id */, HashMap<String /* affiliate_id*/, HashMap<String /* event_code*/, Long>>>
-                resultMap = new HashMap<>();
+        HashMap<String /* offer_id */, HashMap<String /* affiliate_id*/, HashMap<String /* event_code*/, Long>>> resultMap = new HashMap<>();
 
-        while (!atomicReference.compareAndSet(null, resultMap)) {
+        while ( !atomicReference.compareAndSet(null, resultMap) ) {
         }
 
         Thread persistThread = new Thread(new PersistTask());
@@ -83,19 +81,19 @@ public class CRAggregationBolt implements IRichBolt, Constant {
     @Override
     public void execute(Tuple input) {
 
-        if (counter.incrementAndGet() % 10000 == 0) {
+        if ( counter.incrementAndGet() % 10000 == 0 ) {
             LOG.info("10000 tuples aggregated.");
         }
 
         Object msgObj = input.getValue(0);
         Object msgStat = input.getValue(1);
         try {
-            if (msgObj instanceof MessageExt) {
+            if ( msgObj instanceof MessageExt ) {
                 MessageExt msg = (MessageExt) msgObj;
                 CRLog logEntry = JSON.parseObject(new String(msg.getBody(), Charset.forName("UTF-8")), CRLog.class);
-                if (CRLogUtils.checkCRLog(logEntry)) {
+                if ( CRLogUtils.checkCRLog(logEntry) ) {
                     HashMap<String, HashMap<String, HashMap<String, Long>>> map = atomicReference.get();
-                    if (!map.containsKey(logEntry.getOffer_id())) {
+                    if ( !map.containsKey(logEntry.getOffer_id()) ) {
                         HashMap<String, HashMap<String, Long>> affMap = new HashMap<>();
                         HashMap<String, Long> eventMap = new HashMap<>();
                         eventMap.put(logEntry.getEvent_code(), BASE);
@@ -103,10 +101,10 @@ public class CRAggregationBolt implements IRichBolt, Constant {
                         map.put(logEntry.getOffer_id(), affMap);
                     } else {
                         HashMap<String, HashMap<String, Long>> affMap = map.get(logEntry.getOffer_id());
-                        if (affMap.containsKey(logEntry.getAffiliate_id())) {
+                        if ( affMap.containsKey(logEntry.getAffiliate_id()) ) {
                             HashMap<String, Long> eventMap = affMap.get(logEntry.getAffiliate_id());
                             String eventCode = logEntry.getEvent_code();
-                            if (eventMap.containsKey(eventCode)) {
+                            if ( eventMap.containsKey(eventCode) ) {
                                 eventMap.put(eventCode, eventMap.get(eventCode) + INCREMENT);
                             } else {
                                 eventMap.put(logEntry.getEvent_code(), BASE);
@@ -121,7 +119,7 @@ public class CRAggregationBolt implements IRichBolt, Constant {
             } else {
                 LOG.error("The first value in tuple should be MessageExt object");
             }
-        } catch (Exception e) {
+        } catch ( Exception e ) {
             LOG.error("Failed to handle Message", e);
             collector.fail(input);
             return;
@@ -144,8 +142,8 @@ public class CRAggregationBolt implements IRichBolt, Constant {
         return null;
     }
 
-
     class PersistTask implements Runnable {
+
         private final CacheManager cacheManager = CacheManager.getInstance();
 
         private HBaseClient hBaseClient = new HBaseClient();
@@ -156,13 +154,13 @@ public class CRAggregationBolt implements IRichBolt, Constant {
 
         @Override
         public void run() {
-            while (!stop) {
+            while ( !stop ) {
                 LOG.info("Start to persist aggregation result.");
                 try {
-                    HashMap<String, HashMap<String, HashMap<String, Long>>> map =
-                            atomicReference.getAndSet(new HashMap<String, HashMap<String, HashMap<String, Long>>>());
+                    HashMap<String, HashMap<String, HashMap<String, Long>>> map = atomicReference
+                            .getAndSet(new HashMap<String, HashMap<String, HashMap<String, Long>>>());
 
-                    if (null == map || map.isEmpty()) {
+                    if ( null == map || map.isEmpty() ) {
                         LOG.info("No data to persist. Sleep to wait for the next cycle.");
                         Thread.sleep(PERIOD * 1000);
                         continue;
@@ -174,12 +172,12 @@ public class CRAggregationBolt implements IRichBolt, Constant {
                     String timestamp = calendar.getTimeInMillis() + "";
                     List<HBaseData> hBaseDataList = new ArrayList<>();
                     Map<String, String> redisCacheMap = new HashMap<>();
-                    for (Map.Entry<String, HashMap<String, HashMap<String, Long>>> row : map.entrySet()) {
+                    for ( Map.Entry<String, HashMap<String, HashMap<String, Long>>> row : map.entrySet() ) {
                         String offerId = row.getKey();
                         long offConvCount = 0;
                         long offClikCount = 0;
                         HashMap<String, HashMap<String, Long>> affMap = row.getValue();
-                        for (Map.Entry<String, HashMap<String, Long>> affRow : affMap.entrySet()) {
+                        for ( Map.Entry<String, HashMap<String, Long>> affRow : affMap.entrySet() ) {
                             String affId = affRow.getKey();
                             HashMap<String, Long> eventMap = affRow.getValue();
                             String rowKey = Helper.generateKey(offerId, affId, timestamp);
@@ -189,9 +187,9 @@ public class CRAggregationBolt implements IRichBolt, Constant {
                             StringBuilder conversion = new StringBuilder();
                             conversion.append("{");
                             Map<String, byte[]> data = new HashMap<String, byte[]>();
-                            for (Map.Entry<String, Long> eventRow : eventMap.entrySet()) {
+                            for ( Map.Entry<String, Long> eventRow : eventMap.entrySet() ) {
                                 String event = eventRow.getKey();
-                                if (event.startsWith("C")) {
+                                if ( event.startsWith("C") ) {
                                     click.append(event).append(": ").append(eventRow.getValue()).append(", ");
                                     offClikCount += eventRow.getValue();
                                 } else {
@@ -200,13 +198,13 @@ public class CRAggregationBolt implements IRichBolt, Constant {
                                 }
                             }
 
-                            if (click.length() > 2) {
+                            if ( click.length() > 2 ) {
                                 click.replace(click.length() - 2, click.length(), "}");
                             } else {
                                 click.append("}");
                             }
 
-                            if (conversion.length() > 2) {
+                            if ( conversion.length() > 2 ) {
                                 conversion.replace(conversion.length() - 2, conversion.length(), "}");
                             } else {
                                 conversion.append("}");
@@ -222,15 +220,15 @@ public class CRAggregationBolt implements IRichBolt, Constant {
                             hBaseDataList.add(hBaseData);
 
                             //Redis存储
-                            cacheManager.sadd(CacheManager.keyAffsInOff(offerId),affId);
-                            cacheManager.zaddAndIncScore(CacheManager.keyOffsClikCount(),offClikCount,offerId);
-                            cacheManager.zaddAndIncScore(CacheManager.keyOffsConvCount(),offConvCount,offerId);
+                            cacheManager.sadd(CacheManager.keyAffsInOff(offerId), affId);
+                            cacheManager.zaddAndIncScore(CacheManager.keyOffsClikCount(), offClikCount, offerId);
+                            cacheManager.zaddAndIncScore(CacheManager.keyOffsConvCount(), offConvCount, offerId);
                         }
                     }
 
-                    for (int i = 0; i < REDIS_MAX_RETRY_TIMES; i++) {
-                        if (!cacheManager.setKeyLive(redisCacheMap, PERIOD * NUMBERS)) {
-                            if (i < REDIS_MAX_RETRY_TIMES - 1) {
+                    for ( int i = 0; i < REDIS_MAX_RETRY_TIMES; i++ ) {
+                        if ( !cacheManager.setKeyLive(redisCacheMap, PERIOD * NUMBERS) ) {
+                            if ( i < REDIS_MAX_RETRY_TIMES - 1 ) {
                                 LOG.error("Persisting to Redis failed, retry in " + (i + 1) + " seconds");
                             } else {
                                 LOG.error("The following data are dropped due to failure to persist to Redis: %s", redisCacheMap);
@@ -242,12 +240,12 @@ public class CRAggregationBolt implements IRichBolt, Constant {
                         }
                     }
 
-                    for (int i = 0; i < HBASE_MAX_RETRY_TIMES; i++) {
+                    for ( int i = 0; i < HBASE_MAX_RETRY_TIMES; i++ ) {
                         try {
                             hBaseClient.insertBatch(hBaseDataList);
                             break;
-                        } catch (HBasePersistenceException e) {
-                            if (i < HBASE_MAX_RETRY_TIMES - 1) {
+                        } catch ( HBasePersistenceException e ) {
+                            if ( i < HBASE_MAX_RETRY_TIMES - 1 ) {
                                 LOG.error("Persisting aggregation data to HBase failed. Retry in " + (i + 1) + " second(s)");
                             } else {
                                 LOG.error("The following aggregation data are dropped: %s", hBaseDataList);
@@ -260,12 +258,12 @@ public class CRAggregationBolt implements IRichBolt, Constant {
                     cacheManager.publish(redisCacheMap, REDIS_CHANNEL);
 
                     LOG.info("Persisting aggregation result done.");
-                } catch (Exception e) {
+                } catch ( Exception e ) {
                     LOG.error("Persistence of aggregated result failed.", e);
                 } finally {
                     try {
                         Thread.sleep(PERIOD * 1000);
-                    } catch (InterruptedException e) {
+                    } catch ( InterruptedException e ) {
                         LOG.error("PersistThread was interrupted.", e);
                     }
                 }
