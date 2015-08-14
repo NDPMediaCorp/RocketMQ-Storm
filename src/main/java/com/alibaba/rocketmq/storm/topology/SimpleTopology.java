@@ -94,6 +94,9 @@ public class SimpleTopology {
             stringBuilder.append("-Denable_ssl=true ");
         }
 
+        if (null != config.get("rocketmq.client.pwd")){
+            stringBuilder.append("RocketMQClientPassword=").append(config.get("rocketmq.client.pwd")).append(" ");
+        }
         if (null != config.get("rocketmq.namesrv.domain")) {
             stringBuilder.append("-Drocketmq.namesrv.domain=").append(config.get("rocketmq.namesrv.domain")).append(" ");
         }

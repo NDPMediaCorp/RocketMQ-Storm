@@ -126,6 +126,7 @@ public class CacheManager {
     }
 
     public Long sadd(String key, String... value) {
+        LOG.info("jedis="+jedis+",key="+key+",value="+value);
         Long result = jedis.sadd(key, value);
         expireAt(key, secondFromNextWeekZero());
         return result;

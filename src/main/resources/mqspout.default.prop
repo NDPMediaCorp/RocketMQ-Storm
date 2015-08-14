@@ -1,5 +1,5 @@
-rocketmq.spout.consumer.group=CG_TP_EAGLE_QUEUE_TRACE_EVENT_PRE
-rocketmq.spout.topic=T_YMREDIRECTOR_QUEUE_TRACE_EVENT_PRE
+rocketmq.spout.consumer.group=CG_EAGLE_QUEUE_TRACE_EVENT
+rocketmq.spout.topic=T_YMREDIRECTOR_QUEUE_TRACE_EVENT
 rocketmq.spout.topic.tag=*
 
 topology.name=TRACE_EVENT_PRE
@@ -14,5 +14,6 @@ topology.message.timeout.secs=60
 rocketmq.spout.ordered=false
 
 rocketmq.enable_ssl=true
-rocketmq.namesrv.domain=54.169.203.57
-rocketmq.log.home=/tmp/logs
+rocketmq.client.pwd=4R4MNv54OnDeoHSRnngFkA==
+# rocketmq.namesrv.domain=54.169.203.57
+rocketmq.log.home=/dianyi/app/logs
