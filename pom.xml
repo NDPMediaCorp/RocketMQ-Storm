@@ -37,7 +37,7 @@
 
 		<repository>
 			<id>Local Nexus Repository</id>
-			<url>http://172.30.10.200:8081/nexus/content/repositories/releases/</url>
+			<url>http://172.30.10.160:8081/nexus/content/repositories/releases/</url>
 		</repository>
 	</repositories>
 
@@ -46,7 +46,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
 		<storm.version>0.9.3</storm.version>
-		<rocketmq.version>3.2.2</rocketmq.version>
+		<rocketmq.version>3.2.2.R2-SNAPSHOT</rocketmq.version>
 
 		<slf4j.version>1.7.5</slf4j.version>
 		<log4j.version>1.2.17</log4j.version>
