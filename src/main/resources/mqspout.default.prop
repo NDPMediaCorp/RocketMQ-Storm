@@ -2,7 +2,7 @@ rocketmq.spout.consumer.group=CG_EAGLE_QUEUE_TRACE_EVENT
 rocketmq.spout.topic=T_YMREDIRECTOR_QUEUE_TRACE_EVENT
 rocketmq.spout.topic.tag=*
 
-topology.name=TRACE_EVENT_PRE
+topology.name=TRACE_EVENT
 topology.spout.parallel=1
 topology.bolt.parallel=1
 
