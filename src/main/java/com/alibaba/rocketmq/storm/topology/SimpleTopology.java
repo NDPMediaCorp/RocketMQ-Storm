@@ -95,7 +95,7 @@ public class SimpleTopology {
         }
 
         if (null != config.get("rocketmq.client.pwd")){
-            stringBuilder.append("RocketMQClientPassword=").append(config.get("rocketmq.client.pwd")).append(" ");
+            stringBuilder.append("-DRocketMQClientPassword=").append(config.get("rocketmq.client.pwd")).append(" ");
         }
         if (null != config.get("rocketmq.namesrv.domain")) {
             stringBuilder.append("-Drocketmq.namesrv.domain=").append(config.get("rocketmq.namesrv.domain")).append(" ");
