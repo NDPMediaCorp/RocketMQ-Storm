@@ -1,0 +1,283 @@
+package com.alibaba.rocketmq.storm.redis;
+
+import org.apache.commons.lang.time.DateFormatUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
+import redis.clients.jedis.Transaction;
+import redis.clients.jedis.exceptions.JedisConnectionException;
+
+import java.util.*;
+
+/**
+ * Created by penuel on 14-7-16.
+ */
+public class RedisClient {
+
+    private static Logger LOG = LoggerFactory.getLogger(RedisClient.class);
+
+    public static final int SECOND = 1000;
+
+    public static final int MINUTE = 60 * SECOND;
+
+    public static final int HOUR = 60 * MINUTE;
+
+    public static final int DAY = 24 * HOUR;
+
+    static JedisPool pool;
+
+    static {
+        ResourceBundle bundle = ResourceBundle.getBundle("redis");
+        if ( bundle == null )
+            throw new IllegalArgumentException("[redis.properties] is not found");
+
+        JedisPoolConfig config = new JedisPoolConfig();
+        //        config.setMaxActive(Integer.valueOf(bundle.getString("redis.pool.maxActive")));
+        config.setMaxIdle(Integer.valueOf(bundle.getString("redis.pool.maxIdle")));
+        config.setMaxWaitMillis(Long.valueOf(bundle.getString("redis.pool.maxWait")));
+        config.setTestOnBorrow(Boolean.valueOf(bundle.getString("redis.pool.testOnBorrow")));
+        config.setTestOnReturn(Boolean.valueOf(bundle.getString("redis.pool.testOnReturn")));
+        config.setMaxTotal(Integer.valueOf(bundle.getString("redis.pool.maxTotal")));
+        config.setMinIdle(Integer.valueOf(bundle.getString("redis.pool.minIdle")));
+        config.setTestOnBorrow(true);
+        pool = new JedisPool(config, bundle.getString("redis.ip"), Integer.valueOf(bundle.getString("redis.port")), 120);
+
+    }
+
+    private static RedisClient redisClient = new RedisClient();
+
+    private RedisClient() {
+
+    }
+
+    public static RedisClient getInstance() {
+
+        if ( null == redisClient ) {
+            redisClient = new RedisClient();
+        }
+        return redisClient;
+    }
+
+
+    public String get(String key) {
+
+        Jedis jedis = null;
+        try {
+            jedis = pool.getResource();
+            return jedis.get(key);
+        } catch ( JedisConnectionException e ) {
+            if ( null != jedis ) {
+                pool.returnBrokenResource(jedis);
+                jedis = null;
+            }
+        } finally {
+            if ( null != jedis )
+                pool.returnResource(jedis);
+        }
+        return null;
+    }
+
+    public void set(Map<String, String> entries) {
+        for ( Map.Entry<String, String> entry : entries.entrySet() ) {
+            set(entry.getKey(), entry.getValue(), null);
+        }
+    }
+
+    public String set(String key, String value, Integer expire) {
+
+        Jedis jedis = null;
+        try {
+            jedis = pool.getResource();
+            String l = jedis.set(key, value);
+            if ( expire != null ) {
+                jedis.expire(key, expire);
+            }
+            return l;
+        } catch ( JedisConnectionException e ) {
+            if ( null != jedis ) {
+                pool.returnBrokenResource(jedis);
+                jedis = null;
+            }
+        } finally {
+            if ( null != jedis )
+                pool.returnResource(jedis);
+        }
+        return null;
+    }
+
+    public Long zadd(String key, double score, String value) {
+
+        Jedis jedis = null;
+        try {
+            jedis = pool.getResource();
+            return jedis.zadd(key, score, value);
+        } catch ( JedisConnectionException e ) {
+            if ( null != jedis ) {
+                pool.returnBrokenResource(jedis);
+                jedis = null;
+            }
+        } finally {
+            if ( null != jedis )
+                pool.returnResource(jedis);
+        }
+        return 0L;
+    }
+
+    public Double zscore(String key, String value) {
+
+        Jedis jedis = null;
+        try {
+            jedis = pool.getResource();
+            Double l = jedis.zscore(key, value);
+            return l;
+        } catch ( JedisConnectionException e ) {
+            if ( null != jedis ) {
+                pool.returnBrokenResource(jedis);
+                jedis = null;
+            }
+        } finally {
+            if ( null != jedis )
+                pool.returnResource(jedis);
+        }
+        return null;
+    }
+
+
+    public boolean setKeyLive(Map<String, String> entries, int live) {
+        Jedis jedis = null;
+        try {
+            jedis = pool.getResource();
+            Transaction tx = jedis.multi();
+            for ( Map.Entry<String, String> entry : entries.entrySet() ) {
+                tx.setex(entry.getKey(), live, entry.getValue());
+            }
+            List<Object> result = tx.exec();
+            if ( null == result || result.isEmpty() ) {
+                LOG.error("Failed to insert " + entries);
+                return false;
+            }
+        } catch ( JedisConnectionException e ) {
+            if ( null != jedis ) {
+                pool.returnBrokenResource(jedis);
+                jedis = null;
+            }
+        } finally {
+            if ( null != jedis )
+                pool.returnResource(jedis);
+        }
+
+        return true;
+    }
+
+    public void publish(Map<String, String> entries, String channel) {
+        Jedis jedis = null;
+        try {
+            jedis = pool.getResource();
+            Transaction tx = jedis.multi();
+            for ( Map.Entry<String, String> entry : entries.entrySet() ) {
+                String key = entry.getKey();
+                tx.publish(channel, key);
+            }
+            tx.exec();
+        } catch ( JedisConnectionException e ) {
+            if ( null != jedis ) {
+                pool.returnBrokenResource(jedis);
+                jedis = null;
+            }
+        } finally {
+            if ( null != jedis )
+                pool.returnResource(jedis);
+        }
+    }
+
+
+    public Long expireAt(String key, int unixTime) {
+        Jedis jedis = null;
+        try {
+            jedis = pool.getResource();
+            return jedis.expireAt(key, unixTime);
+        } catch ( JedisConnectionException e ) {
+            if ( null != jedis ) {
+                pool.returnBrokenResource(jedis);
+                jedis = null;
+            }
+        } finally {
+            if ( null != jedis )
+                pool.returnResource(jedis);
+        }
+        return null;
+    }
+
+    public Long sadd(String key, String... value) {
+        LOG.info("jedis=" + pool.getResource() + ",key=" + key + ",value=" + value);
+        Long result = 0L;
+        Jedis jedis = null;
+        try {
+            jedis = pool.getResource();
+            result = jedis.sadd(key, value);
+            expireAt(key, secondFromNextWeekZero());
+        } catch ( JedisConnectionException e ) {
+            LOG.error("redis.sadd error:key=" + key + ",value=" + value, e);
+            if ( null != jedis ) {
+                pool.returnBrokenResource(jedis);
+                jedis = null;
+            }
+        } finally {
+            if ( null != jedis )
+                pool.returnResource(pool.getResource());
+        }
+        return result;
+    }
+
+    public Long zaddAndIncScore(String key, double score, String value) {
+        try {
+            Double existsScore = zscore(key, value);
+            if ( null == existsScore ) {
+                existsScore = 0D;
+            }
+            score += existsScore.doubleValue();
+            return zadd(key, score, value);
+        } catch ( Exception e ) {
+            LOG.error("redis.zaddAndIncScore error:key=" + key + ",value=" + value + ",score=" + score, e);
+        }
+        return null;
+    }
+
+    /** 下周零点的时间戳 */
+    public static int secondFromNextWeekZero() {
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.DAY_OF_YEAR, 7);
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        return Integer.valueOf(cal.getTimeInMillis() / 1000 + "");
+    }
+
+    public static String KEY_OFFS_CONV_COUNT_ONDAY = "offs_conv_count_%s";
+
+    public static String keyOffsConvCount() {
+        return String.format(KEY_OFFS_CONV_COUNT_ONDAY, DateFormatUtils.format(Calendar.getInstance(), "yyyyMMddHH"));
+    }
+
+    public static String KEY_OFFS_CLIK_COUNT_ONDAY = "offs_clik_count_%s";
+
+    public static String keyOffsClikCount() {
+        return String.format(KEY_OFFS_CLIK_COUNT_ONDAY, DateFormatUtils.format(Calendar.getInstance(), "yyyyMMddHH"));
+    }
+
+    public static String KEY_PRE_AFFS_IN_OFF_ONDAY = "affs_in_offer_%s_%s";
+
+    public static String keyAffsInOff(String offId) {
+        return String.format(KEY_PRE_AFFS_IN_OFF_ONDAY, offId, DateFormatUtils.format(Calendar.getInstance(), "yyyyMMdd"));
+    }
+
+    public static void main(String[] args) {
+        System.out.println(keyOffsConvCount());
+        System.out.println(keyOffsClikCount());
+        System.out.println(keyAffsInOff("111"));
+        System.out.println(secondFromNextWeekZero());
+    }
+
+}

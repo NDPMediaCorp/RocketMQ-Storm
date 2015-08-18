@@ -16,4 +16,5 @@ rocketmq.spout.ordered=false
 rocketmq.enable_ssl=true
 rocketmq.client.pwd=4R4MNv54OnDeoHSRnngFkA==
 # rocketmq.namesrv.domain=54.169.203.57
+# version 1.1
 rocketmq.log.home=/dianyi/app/logs

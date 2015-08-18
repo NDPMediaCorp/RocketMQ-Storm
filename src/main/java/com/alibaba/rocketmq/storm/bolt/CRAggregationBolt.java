@@ -13,8 +13,8 @@ import com.alibaba.rocketmq.storm.hbase.exception.HBasePersistenceException;
 import com.alibaba.rocketmq.storm.internal.tools.CRLogUtils;
 import com.alibaba.rocketmq.storm.model.CRLog;
 import com.alibaba.rocketmq.storm.model.HBaseData;
-import com.alibaba.rocketmq.storm.redis.CacheManager;
 import com.alibaba.rocketmq.storm.redis.Constant;
+import com.alibaba.rocketmq.storm.redis.RedisClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +47,9 @@ public class CRAggregationBolt implements IRichBolt, Constant {
     private static final String COLUMN_FAMILY = "t";
 
     private static final String COLUMN_CLICK = "click";
+
     private static final String COLUMN_CONVERSION = "conv";
+
     private static final Charset DEFAULT_CHARSET = Charset.forName("UTF-8");
 
     private static final int HBASE_MAX_RETRY_TIMES = 5;
@@ -61,7 +63,7 @@ public class CRAggregationBolt implements IRichBolt, Constant {
     private volatile boolean stop = false;
 
     @Override
-    public void prepare(@SuppressWarnings( "rawtypes" ) Map stormConf, TopologyContext context, OutputCollector collector) {
+    public void prepare(@SuppressWarnings("rawtypes") Map stormConf, TopologyContext context, OutputCollector collector) {
         this.collector = collector;
 
         /**
@@ -144,7 +146,7 @@ public class CRAggregationBolt implements IRichBolt, Constant {
 
     class PersistTask implements Runnable {
 
-        private final CacheManager cacheManager = CacheManager.getInstance();
+        private final RedisClient redisClient = RedisClient.getInstance();
 
         private HBaseClient hBaseClient = new HBaseClient();
 
@@ -220,14 +222,14 @@ public class CRAggregationBolt implements IRichBolt, Constant {
                             hBaseDataList.add(hBaseData);
 
                             //Redis存储
-                            cacheManager.sadd(CacheManager.keyAffsInOff(offerId), affId);
-                            cacheManager.zaddAndIncScore(CacheManager.keyOffsClikCount(), offClikCount, offerId);
-                            cacheManager.zaddAndIncScore(CacheManager.keyOffsConvCount(), offConvCount, offerId);
+                            redisClient.sadd(RedisClient.keyAffsInOff(offerId), affId);
+                            redisClient.zaddAndIncScore(RedisClient.keyOffsClikCount(), offClikCount, offerId);
+                            redisClient.zaddAndIncScore(RedisClient.keyOffsConvCount(), offConvCount, offerId);
                         }
                     }
 
                     for ( int i = 0; i < REDIS_MAX_RETRY_TIMES; i++ ) {
-                        if ( !cacheManager.setKeyLive(redisCacheMap, PERIOD * NUMBERS) ) {
+                        if ( !redisClient.setKeyLive(redisCacheMap, PERIOD * NUMBERS) ) {
                             if ( i < REDIS_MAX_RETRY_TIMES - 1 ) {
                                 LOG.error("Persisting to Redis failed, retry in " + (i + 1) + " seconds");
                             } else {
@@ -255,7 +257,7 @@ public class CRAggregationBolt implements IRichBolt, Constant {
                         Thread.sleep((i + 1) * 1000);
                     }
 
-                    cacheManager.publish(redisCacheMap, REDIS_CHANNEL);
+                    redisClient.publish(redisCacheMap, REDIS_CHANNEL);
 
                     LOG.info("Persisting aggregation result done.");
                 } catch ( Exception e ) {
