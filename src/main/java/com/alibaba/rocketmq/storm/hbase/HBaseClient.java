@@ -1,5 +1,24 @@
 package com.alibaba.rocketmq.storm.hbase;
 
+import com.alibaba.rocketmq.storm.hbase.exception.HBaseDataInvalidException;
+import com.alibaba.rocketmq.storm.hbase.exception.HBasePersistenceException;
+import com.alibaba.rocketmq.storm.model.HBaseData;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.filter.ColumnPrefixFilter;
+import org.apache.hadoop.hbase.filter.Filter;
+import org.apache.hadoop.security.SecurityUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -9,22 +28,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import com.alibaba.rocketmq.storm.hbase.exception.HBaseDataInvalidException;
-import com.alibaba.rocketmq.storm.hbase.exception.HBasePersistenceException;
-import com.alibaba.rocketmq.storm.model.HBaseData;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.Cell;
-import org.apache.hadoop.hbase.CellUtil;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.ResultScanner;
-import org.apache.hadoop.hbase.client.Scan;
-import org.apache.hadoop.security.SecurityUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class HBaseClient {
 
@@ -153,6 +156,91 @@ public class HBaseClient {
         }
     }
 
+    public List<HBaseData> query(String offerId, String affiliateId, Calendar start, Calendar end, String table,
+                                 String columnFamily) throws HBasePersistenceException {
+        checkHBaseClientState();
+        HTable hTable = null;
+        try {
+            hTable = new HTable(config, table);
+            Get get = new Get(Helper.generateKeyForHBase(offerId, affiliateId).getBytes());
+            get.setTimeRange(start.getTimeInMillis(), end.getTimeInMillis());
+            get.addFamily(columnFamily.getBytes());
+
+            Result result = hTable.get(get);
+
+            Cell[] cells = result.rawCells();
+            List<HBaseData> hBaseDataList = null;
+            if (null != cells) {
+                hBaseDataList = new ArrayList<>(cells.length);
+                for (Cell cell : cells) {
+                    HBaseData hBaseData = new HBaseData();
+                    hBaseData.setTable(table);
+                    hBaseData.setColumnFamily(columnFamily);
+                    hBaseData.setRowKey(Helper.generateKeyForHBase(offerId, affiliateId));
+                    Calendar calendar = Calendar.getInstance();
+                    calendar.setTimeInMillis(cell.getTimestamp());
+                    hBaseData.setDate(calendar.getTime());
+                    Map<String, byte[]> data = new HashMap<>();
+                    data.put(new String(CellUtil.cloneQualifier(cell)), CellUtil.cloneValue(cell));
+                    hBaseData.setData(data);
+                    hBaseData.setData(data);
+                }
+            }
+            return hBaseDataList;
+        } catch (IOException e) {
+            LOG.error("HBase HTable instantiation failed.", e);
+            throw new HBasePersistenceException(e);
+        } finally {
+            if (null != hTable) {
+                try {
+                    hTable.close();
+                } catch (IOException e) {
+                    LOG.error("Error close HTable", e);
+                }
+            }
+        }
+    }
+
+    public List<HBaseData> scan(String offerId, Calendar start, Calendar end, String table, String columnFamily)
+            throws HBasePersistenceException {
+        checkHBaseClientState();
+        HTable hTable = null;
+        try {
+            hTable = new HTable(config, table);
+            Scan scan = new Scan();
+            scan.addFamily(columnFamily.getBytes());
+            scan.setTimeRange(start.getTimeInMillis(), end.getTimeInMillis());
+            Filter filter = new ColumnPrefixFilter(offerId.getBytes());
+            scan.setFilter(filter);
+            ResultScanner results = hTable.getScanner(scan);
+            List<HBaseData> result = new ArrayList<>();
+            for (Result r : results) {
+                HBaseData dataRow = new HBaseData();
+                Map<String, byte[]> data = new HashMap<>();
+                dataRow.setData(data);
+                dataRow.setRowKey(new String(r.getRow(), DEFAULT_CHARSET));
+                dataRow.setTable(table);
+                dataRow.setColumnFamily(columnFamily);
+                for (Cell cell : r.rawCells()) {
+                    data.put(new String(CellUtil.cloneQualifier(cell)), CellUtil.cloneValue(cell));
+                }
+                result.add(dataRow);
+            }
+            return result;
+        } catch (IOException e) {
+            LOG.error("HBase HTable instantiation failed.", e);
+            throw new HBasePersistenceException(e);
+        } finally {
+            if (null != hTable) {
+                try {
+                    hTable.close();
+                } catch (IOException e) {
+                    LOG.error("Error close HTable", e);
+                }
+            }
+        }
+    }
+
     /**
      *
      * @param offerId
@@ -163,6 +251,7 @@ public class HBaseClient {
      * @param columnFamily
      * @return
      */
+    @Deprecated
     public List<HBaseData> scan(String offerId, String affiliateId, Calendar start, Calendar end,
                                 String table, String columnFamily) throws HBasePersistenceException {
         checkHBaseClientState();
@@ -173,8 +262,8 @@ public class HBaseClient {
             scan.addFamily(columnFamily.getBytes(DEFAULT_CHARSET));
 
             //because we use long max - timestamp like row key so the last one is the first one.
-            byte[] stopRowKey = Helper.generateKey(offerId, affiliateId, start.getTimeInMillis() + "").getBytes(DEFAULT_CHARSET);
-            byte[] startRowKey = Helper.generateKey(offerId, affiliateId, end.getTimeInMillis() + "").getBytes(DEFAULT_CHARSET);
+            byte[] stopRowKey = Helper.generateKeyForRedis(offerId, affiliateId, start.getTimeInMillis() + "").getBytes(DEFAULT_CHARSET);
+            byte[] startRowKey = Helper.generateKeyForRedis(offerId, affiliateId, end.getTimeInMillis() + "").getBytes(DEFAULT_CHARSET);
 
             scan.setStartRow(startRowKey);
             scan.setStopRow(stopRowKey);

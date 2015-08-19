@@ -40,8 +40,6 @@ public class CRAggregationBolt implements IRichBolt, Constant {
 
     private OutputCollector collector;
 
-    private static final String DATE_FORMAT = "yyyyMMddHHmmss";
-
     private static final String TABLE_NAME = "eagle_log";
 
     private static final String COLUMN_FAMILY = "t";
@@ -169,7 +167,6 @@ public class CRAggregationBolt implements IRichBolt, Constant {
                     }
 
                     Calendar calendar = Calendar.getInstance();
-                    calendar.setTimeZone(TimeZone.getTimeZone("UTC"));
                     String timestamp = calendar.getTimeInMillis() + "";
                     List<HBaseData> hBaseDataList = new ArrayList<>();
                     Map<String, String> redisCacheMap = new HashMap<>();
@@ -181,7 +178,6 @@ public class CRAggregationBolt implements IRichBolt, Constant {
                         for ( Map.Entry<String, HashMap<String, Long>> affRow : affMap.entrySet() ) {
                             String affId = affRow.getKey();
                             HashMap<String, Long> eventMap = affRow.getValue();
-                            String rowKey = Helper.generateKey(offerId, affId, timestamp);
                             StringBuilder click = new StringBuilder();
                             click.append("{");
 
@@ -212,12 +208,12 @@ public class CRAggregationBolt implements IRichBolt, Constant {
                             }
 
                             LOG.debug("[Click] Key = " + click.toString());
-                            LOG.debug("[Conv] Key = " + conversion.toString());
+                            LOG.debug("[Conversion] Key = " + conversion.toString());
 
                             data.put(COLUMN_CLICK, click.toString().getBytes(DEFAULT_CHARSET));
                             data.put(COLUMN_CONVERSION, conversion.toString().getBytes(DEFAULT_CHARSET));
-                            redisCacheMap.put(rowKey, "{click: " + click + ", conv: " + conversion + "}");
-                            HBaseData hBaseData = new HBaseData(TABLE_NAME, rowKey, COLUMN_FAMILY, data);
+                            redisCacheMap.put(Helper.generateKeyForRedis(offerId, affId, timestamp), "{click: " + click + ", conv: " + conversion + "}");
+                            HBaseData hBaseData = new HBaseData(TABLE_NAME, Helper.generateKeyForHBase(offerId, affId), COLUMN_FAMILY, data);
                             hBaseDataList.add(hBaseData);
 
                             //Redis存储

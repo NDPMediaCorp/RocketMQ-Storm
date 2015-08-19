@@ -1,5 +1,6 @@
 package com.alibaba.rocketmq.storm.model;
 
+import java.util.Date;
 import java.util.Map;
 
 public class HBaseData {
@@ -11,6 +12,8 @@ public class HBaseData {
     private String rowKey;
 
     private Map<String, byte[]> data;
+
+    private Date date;
 
     public HBaseData() {
     }
@@ -54,6 +57,14 @@ public class HBaseData {
         this.data = data;
     }
 
+    public Date getDate() {
+        return date;
+    }
+
+    public void setDate(Date date) {
+        this.date = date;
+    }
+
     @Override
     public String toString() {
         String datas = "[=][";
@@ -65,6 +76,7 @@ public class HBaseData {
                 "table='" + table + '\'' +
                 ", columnFamily='" + columnFamily + '\'' +
                 ", rowKey='" + rowKey + '\'' +
+                ", date = " + date +
                 ", data=" + datas +
                 '}';
     }
