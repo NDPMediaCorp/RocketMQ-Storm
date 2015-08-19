@@ -222,7 +222,7 @@ public class CRAggregationBolt implements IRichBolt, Constant {
                             hBaseDataList.add(hBaseData);
 
                             //Redis存储
-                            redisClient.sadd(RedisClient.keyAffsInOff(offerId), affId);
+                            redisClient.saddAndExpireAtNextWeek(RedisClient.keyAffsInOff(offerId), affId);
                             redisClient.zaddAndIncScore(RedisClient.keyOffsClikCount(), offClikCount, offerId);
                             redisClient.zaddAndIncScore(RedisClient.keyOffsConvCount(), offConvCount, offerId);
                         }

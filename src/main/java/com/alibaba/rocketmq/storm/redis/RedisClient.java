@@ -1,5 +1,6 @@
 package com.alibaba.rocketmq.storm.redis;
 
+import com.alibaba.fastjson.JSONObject;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +42,7 @@ public class RedisClient {
         config.setTestOnReturn(Boolean.valueOf(bundle.getString("redis.pool.testOnReturn")));
         config.setMaxTotal(Integer.valueOf(bundle.getString("redis.pool.maxTotal")));
         config.setMinIdle(Integer.valueOf(bundle.getString("redis.pool.minIdle")));
-        config.setTestOnBorrow(true);
+        LOG.warn("JedisConfig : "+ JSONObject.toJSONString(config) +",redis.ip="+bundle.getString("redis.ip")+",redis.port="+bundle.getString("redis.port"));
         pool = new JedisPool(config, bundle.getString("redis.ip"), Integer.valueOf(bundle.getString("redis.port")), 120);
 
     }
@@ -68,13 +69,14 @@ public class RedisClient {
             jedis = pool.getResource();
             return jedis.get(key);
         } catch ( JedisConnectionException e ) {
+            LOG.error("RedisClient Error:",e);
             if ( null != jedis ) {
                 pool.returnBrokenResource(jedis);
                 jedis = null;
             }
         } finally {
             if ( null != jedis )
-                pool.returnResource(jedis);
+                jedis.close();
         }
         return null;
     }
@@ -96,13 +98,14 @@ public class RedisClient {
             }
             return l;
         } catch ( JedisConnectionException e ) {
+            LOG.error("RedisClient Error:",e);
             if ( null != jedis ) {
                 pool.returnBrokenResource(jedis);
                 jedis = null;
             }
         } finally {
             if ( null != jedis )
-                pool.returnResource(jedis);
+                jedis.close();
         }
         return null;
     }
@@ -114,13 +117,14 @@ public class RedisClient {
             jedis = pool.getResource();
             return jedis.zadd(key, score, value);
         } catch ( JedisConnectionException e ) {
+            LOG.error("RedisClient Error:",e);
             if ( null != jedis ) {
                 pool.returnBrokenResource(jedis);
                 jedis = null;
             }
         } finally {
             if ( null != jedis )
-                pool.returnResource(jedis);
+                jedis.close();
         }
         return 0L;
     }
@@ -133,13 +137,14 @@ public class RedisClient {
             Double l = jedis.zscore(key, value);
             return l;
         } catch ( JedisConnectionException e ) {
+            LOG.error("RedisClient Error:",e);
             if ( null != jedis ) {
                 pool.returnBrokenResource(jedis);
                 jedis = null;
             }
         } finally {
             if ( null != jedis )
-                pool.returnResource(jedis);
+                jedis.close();
         }
         return null;
     }
@@ -159,13 +164,14 @@ public class RedisClient {
                 return false;
             }
         } catch ( JedisConnectionException e ) {
+            LOG.error("RedisClient Error:",e);
             if ( null != jedis ) {
                 pool.returnBrokenResource(jedis);
                 jedis = null;
             }
         } finally {
             if ( null != jedis )
-                pool.returnResource(jedis);
+                jedis.close();
         }
 
         return true;
@@ -182,13 +188,14 @@ public class RedisClient {
             }
             tx.exec();
         } catch ( JedisConnectionException e ) {
+            LOG.error("publish",e);
             if ( null != jedis ) {
                 pool.returnBrokenResource(jedis);
                 jedis = null;
             }
         } finally {
             if ( null != jedis )
-                pool.returnResource(jedis);
+                jedis.close();
         }
     }
 
@@ -199,25 +206,24 @@ public class RedisClient {
             jedis = pool.getResource();
             return jedis.expireAt(key, unixTime);
         } catch ( JedisConnectionException e ) {
+            LOG.error("expireAt",e);
             if ( null != jedis ) {
                 pool.returnBrokenResource(jedis);
                 jedis = null;
             }
         } finally {
             if ( null != jedis )
-                pool.returnResource(jedis);
+                jedis.close();
         }
         return null;
     }
 
     public Long sadd(String key, String... value) {
-        LOG.info("jedis=" + pool.getResource() + ",key=" + key + ",value=" + value);
         Long result = 0L;
         Jedis jedis = null;
         try {
             jedis = pool.getResource();
             result = jedis.sadd(key, value);
-            expireAt(key, secondFromNextWeekZero());
         } catch ( JedisConnectionException e ) {
             LOG.error("redis.sadd error:key=" + key + ",value=" + value, e);
             if ( null != jedis ) {
@@ -226,7 +232,27 @@ public class RedisClient {
             }
         } finally {
             if ( null != jedis )
-                pool.returnResource(pool.getResource());
+                jedis.close();
+        }
+        return result;
+    }
+
+    public Long saddAndExpireAtNextWeek(String key,String... value){
+        Long result = 0L;
+        Jedis jedis = null;
+        try {
+            jedis = pool.getResource();
+            result = jedis.sadd(key, value);
+            expireAt(key, secondFromNextWeekZero());
+        } catch ( JedisConnectionException e ) {
+            LOG.error("redis.saddAndExpireAtNextWeek error:key=" + key + ",value=" + value, e);
+            if ( null != jedis ) {
+                pool.returnBrokenResource(jedis);
+                jedis = null;
+            }
+        } finally {
+            if ( null != jedis )
+                jedis.close();
         }
         return result;
     }
@@ -237,8 +263,7 @@ public class RedisClient {
             if ( null == existsScore ) {
                 existsScore = 0D;
             }
-            score += existsScore.doubleValue();
-            return zadd(key, score, value);
+            return zadd(key, existsScore.doubleValue()+score, value);
         } catch ( Exception e ) {
             LOG.error("redis.zaddAndIncScore error:key=" + key + ",value=" + value + ",score=" + score, e);
         }
