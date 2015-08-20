@@ -33,10 +33,14 @@ public class HBaseClient {
 
     private static final Logger LOG = LoggerFactory.getLogger(HBaseClient.class);
 
-    public static String KEYTAB_CONF="hbase.keytab.filename";
-    public static String KEYTAB_USER="hbase.client.kerberos.principal";
-    public static int ELEVEN_MINUTES=60000;
+    public static String KEYTAB_CONF = "hbase.keytab.filename";
+
+    public static String KEYTAB_USER = "hbase.client.kerberos.principal";
+
+    public static int ELEVEN_MINUTES = 60000;
+
     private static final Charset DEFAULT_CHARSET = Charset.forName("UTF-8");
+
     private static final String DATE_FORMAT = "yyyyMMddHHmmss";
 
     private Configuration config;
@@ -50,13 +54,14 @@ public class HBaseClient {
 
         // Spawn the relogin thread next
         Thread reloginThread = new Thread() {
+
             @Override
             public void run() {
-                while (HBaseClientStatus.STARTING == status || HBaseClientStatus.STARTED == status) {
+                while ( HBaseClientStatus.STARTING == status || HBaseClientStatus.STARTED == status ) {
                     try {
                         SecurityUtil.login(conf, KEYTAB_CONF, KEYTAB_USER);
                         Thread.sleep(ELEVEN_MINUTES);
-                    } catch (IOException | InterruptedException e) {
+                    } catch ( IOException | InterruptedException e ) {
                         e.printStackTrace();
                         interrupt();
                     }
@@ -67,40 +72,36 @@ public class HBaseClient {
         reloginThread.start();
     }
 
-
     public void start() {
-        switch (status) {
-            case JUST_CREATED:
+        switch ( status ) {
+        case JUST_CREATED:
 
-                status = HBaseClientStatus.STARTING;
-                try {
-                    config = HBaseConfiguration.create();
-//                    runLoginAndRenewalThread(config);
-                    status = HBaseClientStatus.STARTED;
-                } catch (Exception e) {
-                    status = HBaseClientStatus.START_FAILED;
-                    LOG.error("Start HBase client failed.", e);
-                }
-                break;
+            status = HBaseClientStatus.STARTING;
+            try {
+                config = HBaseConfiguration.create();
+                //                    runLoginAndRenewalThread(config);
+                status = HBaseClientStatus.STARTED;
+            } catch ( Exception e ) {
+                status = HBaseClientStatus.START_FAILED;
+                LOG.error("Start HBase client failed.", e);
+            }
+            break;
 
-            case STARTED:
-                throw new IllegalStateException("HBaseClient has already started, you only need to start it once");
+        case STARTED:
+            throw new IllegalStateException("HBaseClient has already started, you only need to start it once");
 
-            default:
-                throw new IllegalStateException("HBaseClient state is illegal. State Status: " + status);
+        default:
+            throw new IllegalStateException("HBaseClient state is illegal. State Status: " + status);
         }
 
     }
 
-
-    public void insert(HBaseData... entries)
-            throws HBasePersistenceException, HBaseDataInvalidException {
+    public void insert(HBaseData... entries) throws HBasePersistenceException, HBaseDataInvalidException {
         insertBatch(Arrays.asList(entries));
     }
 
-    public void insertBatch(Collection<HBaseData> collection)
-            throws HBasePersistenceException, HBaseDataInvalidException {
-        if (null == collection || collection.isEmpty()) {
+    public void insertBatch(Collection<HBaseData> collection) throws HBasePersistenceException, HBaseDataInvalidException {
+        if ( null == collection || collection.isEmpty() ) {
             return;
         }
 
@@ -110,32 +111,32 @@ public class HBaseClient {
         try {
             HBaseData sampleData = collection.iterator().next();
 
-            if (!isHBaseDataRowValid(sampleData)) {
+            if ( !isHBaseDataRowValid(sampleData) ) {
                 throw new HBaseDataInvalidException("Data invalid");
             }
 
             hTable = new HTable(config, sampleData.getTable());
             List<Put> putList = new ArrayList<>(collection.size());
-            for (HBaseData entry : collection) {
-                if (!isHBaseDataRowValid(entry)) {
+            for ( HBaseData entry : collection ) {
+                if ( !isHBaseDataRowValid(entry) ) {
                     throw new HBaseDataInvalidException("Data invalid");
                 }
 
                 Put put = new Put(entry.getRowKey().getBytes());
-                for (Map.Entry<String, byte[]> column : entry.getData().entrySet()) {
+                for ( Map.Entry<String, byte[]> column : entry.getData().entrySet() ) {
                     put.add(sampleData.getColumnFamily().getBytes(), column.getKey().getBytes(), column.getValue());
                 }
                 putList.add(put);
             }
             hTable.put(putList);
-        } catch (IOException e) {
+        } catch ( IOException e ) {
             LOG.error("Failed to create a HTable instance for operation", e);
             throw new HBasePersistenceException(e);
         } finally {
-            if (null != hTable) {
+            if ( null != hTable ) {
                 try {
                     hTable.close();
-                } catch (IOException e) {
+                } catch ( IOException e ) {
                     LOG.error("Failed while closing HTable.", e);
                 }
             }
@@ -143,21 +144,21 @@ public class HBaseClient {
     }
 
     private static boolean isHBaseDataRowValid(HBaseData data) {
-        boolean invalid = null == data
-                || null == data.getTable() || data.getTable().trim().isEmpty()
-                || null == data.getColumnFamily() || data.getColumnFamily().trim().isEmpty()
-                || null == data.getData() || data.getData().isEmpty();
+        boolean invalid =
+                null == data || null == data.getTable() || data.getTable().trim().isEmpty() || null == data.getColumnFamily() || data.getColumnFamily().trim()
+                                                                                                                                     .isEmpty() || null == data
+                        .getData() || data.getData().isEmpty();
         return !invalid;
     }
 
     private void checkHBaseClientState() {
-        if (HBaseClientStatus.STARTED != status) {
+        if ( HBaseClientStatus.STARTED != status ) {
             throw new IllegalStateException("Client State Illegal.");
         }
     }
 
-    public List<HBaseData> query(String offerId, String affiliateId, Calendar start, Calendar end, String table,
-                                 String columnFamily) throws HBasePersistenceException {
+    public List<HBaseData> query(String offerId, String affiliateId, Calendar start, Calendar end, String table, String columnFamily)
+            throws HBasePersistenceException {
         checkHBaseClientState();
         HTable hTable = null;
         try {
@@ -170,9 +171,9 @@ public class HBaseClient {
 
             Cell[] cells = result.rawCells();
             List<HBaseData> hBaseDataList = null;
-            if (null != cells) {
+            if ( null != cells ) {
                 hBaseDataList = new ArrayList<>(cells.length);
-                for (Cell cell : cells) {
+                for ( Cell cell : cells ) {
                     HBaseData hBaseData = new HBaseData();
                     hBaseData.setTable(table);
                     hBaseData.setColumnFamily(columnFamily);
@@ -187,22 +188,21 @@ public class HBaseClient {
                 }
             }
             return hBaseDataList;
-        } catch (IOException e) {
+        } catch ( IOException e ) {
             LOG.error("HBase HTable instantiation failed.", e);
             throw new HBasePersistenceException(e);
         } finally {
-            if (null != hTable) {
+            if ( null != hTable ) {
                 try {
                     hTable.close();
-                } catch (IOException e) {
+                } catch ( IOException e ) {
                     LOG.error("Error close HTable", e);
                 }
             }
         }
     }
 
-    public List<HBaseData> scan(String offerId, Calendar start, Calendar end, String table, String columnFamily)
-            throws HBasePersistenceException {
+    public List<HBaseData> scan(String offerId, Calendar start, Calendar end, String table, String columnFamily) throws HBasePersistenceException {
         checkHBaseClientState();
         HTable hTable = null;
         try {
@@ -214,27 +214,27 @@ public class HBaseClient {
             scan.setFilter(filter);
             ResultScanner results = hTable.getScanner(scan);
             List<HBaseData> result = new ArrayList<>();
-            for (Result r : results) {
+            for ( Result r : results ) {
                 HBaseData dataRow = new HBaseData();
                 Map<String, byte[]> data = new HashMap<>();
                 dataRow.setData(data);
                 dataRow.setRowKey(new String(r.getRow(), DEFAULT_CHARSET));
                 dataRow.setTable(table);
                 dataRow.setColumnFamily(columnFamily);
-                for (Cell cell : r.rawCells()) {
+                for ( Cell cell : r.rawCells() ) {
                     data.put(new String(CellUtil.cloneQualifier(cell)), CellUtil.cloneValue(cell));
                 }
                 result.add(dataRow);
             }
             return result;
-        } catch (IOException e) {
+        } catch ( IOException e ) {
             LOG.error("HBase HTable instantiation failed.", e);
             throw new HBasePersistenceException(e);
         } finally {
-            if (null != hTable) {
+            if ( null != hTable ) {
                 try {
                     hTable.close();
-                } catch (IOException e) {
+                } catch ( IOException e ) {
                     LOG.error("Error close HTable", e);
                 }
             }
@@ -242,7 +242,6 @@ public class HBaseClient {
     }
 
     /**
-     *
      * @param offerId
      * @param affiliateId
      * @param start
@@ -252,8 +251,8 @@ public class HBaseClient {
      * @return
      */
     @Deprecated
-    public List<HBaseData> scan(String offerId, String affiliateId, Calendar start, Calendar end,
-                                String table, String columnFamily) throws HBasePersistenceException {
+    public List<HBaseData> scan(String offerId, String affiliateId, Calendar start, Calendar end, String table, String columnFamily)
+            throws HBasePersistenceException {
         checkHBaseClientState();
         HTable hTable = null;
         try {
@@ -270,28 +269,28 @@ public class HBaseClient {
             scan.setMaxVersions(1);
             ResultScanner results = hTable.getScanner(scan);
             List<HBaseData> result = new ArrayList<>();
-            for (Result r : results) {
+            for ( Result r : results ) {
                 HBaseData dataRow = new HBaseData();
                 Map<String, byte[]> data = new HashMap<>();
                 dataRow.setData(data);
                 dataRow.setRowKey(new String(r.getRow(), DEFAULT_CHARSET));
                 dataRow.setTable(table);
                 dataRow.setColumnFamily(columnFamily);
-                for (Cell cell : r.rawCells()) {
+                for ( Cell cell : r.rawCells() ) {
                     data.put(new String(CellUtil.cloneQualifier(cell)), CellUtil.cloneValue(cell));
                 }
 
                 result.add(dataRow);
             }
             return result;
-        } catch (IOException e) {
+        } catch ( IOException e ) {
             LOG.error("HBase HTable instantiation failed.", e);
             throw new HBasePersistenceException(e);
         } finally {
-            if (null != hTable) {
+            if ( null != hTable ) {
                 try {
                     hTable.close();
-                } catch (IOException e) {
+                } catch ( IOException e ) {
                     LOG.error("Error close HTable", e);
                 }
             }

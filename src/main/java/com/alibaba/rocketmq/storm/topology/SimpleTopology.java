@@ -105,6 +105,10 @@ public class SimpleTopology {
             stringBuilder.append("-Dlog.home=").append(config.get("rocketmq.log.home")).append(" ");
         }
 
+        if ( null != config.get("topology.jvm") ){
+            stringBuilder.append(config.get("topology.jvm")).append(" ");
+        }
+
         return stringBuilder.toString();
     }
 }

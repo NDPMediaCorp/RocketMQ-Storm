@@ -263,6 +263,7 @@ public class RedisClient {
             if ( null == existsScore ) {
                 existsScore = 0D;
             }
+            LOG.info("zaddAndIncScore:key={},score={},value={},existsScore={},sum={}",key,score,value,existsScore,(existsScore.doubleValue()+score));
             return zadd(key, existsScore.doubleValue()+score, value);
         } catch ( Exception e ) {
             LOG.error("redis.zaddAndIncScore error:key=" + key + ",value=" + value + ",score=" + score, e);
