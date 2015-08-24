@@ -185,6 +185,7 @@ public class HBaseClient {
                     data.put(new String(CellUtil.cloneQualifier(cell)), CellUtil.cloneValue(cell));
                     hBaseData.setData(data);
                     hBaseData.setData(data);
+                    hBaseDataList.add(hBaseData);
                 }
             }
             return hBaseDataList;
