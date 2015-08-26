@@ -166,6 +166,7 @@ public class HBaseClient {
             Get get = new Get(Helper.generateKeyForHBase(offerId, affiliateId).getBytes());
             get.setTimeRange(start.getTimeInMillis(), end.getTimeInMillis());
             get.addFamily(columnFamily.getBytes());
+            get.setMaxVersions(2880);//TODO setMaxVersion from param
 
             Result result = hTable.get(get);
 
@@ -183,7 +184,6 @@ public class HBaseClient {
                     hBaseData.setDate(calendar.getTime());
                     Map<String, byte[]> data = new HashMap<>();
                     data.put(new String(CellUtil.cloneQualifier(cell)), CellUtil.cloneValue(cell));
-                    hBaseData.setData(data);
                     hBaseData.setData(data);
                     hBaseDataList.add(hBaseData);
                 }
