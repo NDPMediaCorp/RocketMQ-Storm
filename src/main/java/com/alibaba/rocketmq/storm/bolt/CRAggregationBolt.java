@@ -157,8 +157,8 @@ public class CRAggregationBolt implements IRichBolt, Constant {
             while ( !stop ) {
                 LOG.info("Start to persist aggregation result.");
                 try {
-                    HashMap<String, HashMap<String, HashMap<String, Long>>> map = atomicReference
-                            .getAndSet(new HashMap<String, HashMap<String, HashMap<String, Long>>>());
+                    HashMap<String, HashMap<String, HashMap<String, Long>>> map = atomicReference.getAndSet(
+                            new HashMap<String, HashMap<String, HashMap<String, Long>>>());
 
                     if ( null == map || map.isEmpty() ) {
                         LOG.info("No data to persist. Sleep to wait for the next cycle.");
@@ -172,10 +172,11 @@ public class CRAggregationBolt implements IRichBolt, Constant {
                     Map<String, String> redisCacheMap = new HashMap<>();
                     for ( Map.Entry<String, HashMap<String, HashMap<String, Long>>> row : map.entrySet() ) {
                         String offerId = row.getKey();
-                        long offConvCount = 0;
-                        long offClikCount = 0;
+                        long offConvCount = 0, offClikCount = 0;
                         HashMap<String, HashMap<String, Long>> affMap = row.getValue();
                         for ( Map.Entry<String, HashMap<String, Long>> affRow : affMap.entrySet() ) {
+                            offConvCount = 0;
+                            offClikCount = 0;
                             String affId = affRow.getKey();
                             HashMap<String, Long> eventMap = affRow.getValue();
                             StringBuilder click = new StringBuilder();
