@@ -116,9 +116,9 @@ public class RedisClient {
         try {
             jedis = pool.getResource();
             Long result = jedis.zadd(key, score, value);
-            if ( null != expire ) {
-                jedis.expire(key, expire);
-            }
+//            if ( null != expire ) {
+//                jedis.expire(key, expire);
+//            }
             return result;
         } catch ( JedisConnectionException e ) {
             LOG.error("RedisClient Error:", e);
