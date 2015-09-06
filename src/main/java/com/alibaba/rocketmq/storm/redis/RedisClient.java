@@ -42,7 +42,8 @@ public class RedisClient {
         config.setTestOnReturn(Boolean.valueOf(bundle.getString("redis.pool.testOnReturn")));
         config.setMaxTotal(Integer.valueOf(bundle.getString("redis.pool.maxTotal")));
         config.setMinIdle(Integer.valueOf(bundle.getString("redis.pool.minIdle")));
-        LOG.warn("JedisConfig : "+ JSONObject.toJSONString(config) +",redis.ip="+bundle.getString("redis.ip")+",redis.port="+bundle.getString("redis.port"));
+        LOG.warn("JedisConfig : " + JSONObject.toJSONString(config) + ",redis.ip=" + bundle.getString("redis.ip") + ",redis.port=" + bundle.getString(
+                "redis.port"));
         pool = new JedisPool(config, bundle.getString("redis.ip"), Integer.valueOf(bundle.getString("redis.port")), 120);
 
     }
@@ -61,7 +62,6 @@ public class RedisClient {
         return redisClient;
     }
 
-
     public String get(String key) {
 
         Jedis jedis = null;
@@ -69,7 +69,7 @@ public class RedisClient {
             jedis = pool.getResource();
             return jedis.get(key);
         } catch ( JedisConnectionException e ) {
-            LOG.error("RedisClient Error:",e);
+            LOG.error("RedisClient Error:", e);
             if ( null != jedis ) {
                 pool.returnBrokenResource(jedis);
                 jedis = null;
@@ -98,7 +98,7 @@ public class RedisClient {
             }
             return l;
         } catch ( JedisConnectionException e ) {
-            LOG.error("RedisClient Error:",e);
+            LOG.error("RedisClient Error:", e);
             if ( null != jedis ) {
                 pool.returnBrokenResource(jedis);
                 jedis = null;
@@ -110,14 +110,18 @@ public class RedisClient {
         return null;
     }
 
-    public Long zadd(String key, double score, String value) {
+    public Long zadd(String key, double score, String value, Integer expire) {
 
         Jedis jedis = null;
         try {
             jedis = pool.getResource();
-            return jedis.zadd(key, score, value);
+            Long result = jedis.zadd(key, score, value);
+            if ( null != expire ) {
+                jedis.expire(key, expire);
+            }
+            return result;
         } catch ( JedisConnectionException e ) {
-            LOG.error("RedisClient Error:",e);
+            LOG.error("RedisClient Error:", e);
             if ( null != jedis ) {
                 pool.returnBrokenResource(jedis);
                 jedis = null;
@@ -137,7 +141,7 @@ public class RedisClient {
             Double l = jedis.zscore(key, value);
             return l;
         } catch ( JedisConnectionException e ) {
-            LOG.error("RedisClient Error:",e);
+            LOG.error("RedisClient Error:", e);
             if ( null != jedis ) {
                 pool.returnBrokenResource(jedis);
                 jedis = null;
@@ -148,7 +152,6 @@ public class RedisClient {
         }
         return null;
     }
-
 
     public boolean setKeyLive(Map<String, String> entries, int live) {
         Jedis jedis = null;
@@ -164,7 +167,7 @@ public class RedisClient {
                 return false;
             }
         } catch ( JedisConnectionException e ) {
-            LOG.error("RedisClient Error:",e);
+            LOG.error("RedisClient Error:", e);
             if ( null != jedis ) {
                 pool.returnBrokenResource(jedis);
                 jedis = null;
@@ -188,7 +191,7 @@ public class RedisClient {
             }
             tx.exec();
         } catch ( JedisConnectionException e ) {
-            LOG.error("publish",e);
+            LOG.error("publish", e);
             if ( null != jedis ) {
                 pool.returnBrokenResource(jedis);
                 jedis = null;
@@ -199,14 +202,13 @@ public class RedisClient {
         }
     }
 
-
     public Long expireAt(String key, int unixTime) {
         Jedis jedis = null;
         try {
             jedis = pool.getResource();
             return jedis.expireAt(key, unixTime);
         } catch ( JedisConnectionException e ) {
-            LOG.error("expireAt",e);
+            LOG.error("expireAt", e);
             if ( null != jedis ) {
                 pool.returnBrokenResource(jedis);
                 jedis = null;
@@ -237,7 +239,7 @@ public class RedisClient {
         return result;
     }
 
-    public Long saddAndExpireAtNextWeek(String key,String... value){
+    public Long saddAndExpireAtNextWeek(String key, String... value) {
         Long result = 0L;
         Jedis jedis = null;
         try {
@@ -257,14 +259,22 @@ public class RedisClient {
         return result;
     }
 
+    /**
+     * 累加 一个月过期
+     *
+     * @param key
+     * @param score
+     * @param value
+     * @return
+     */
     public Long zaddAndIncScore(String key, double score, String value) {
         try {
             Double existsScore = zscore(key, value);
             if ( null == existsScore ) {
                 existsScore = 0D;
             }
-            LOG.debug("zaddAndIncScore:key={},score={},value={},existsScore={},sum={}",key,score,value,existsScore,(existsScore.doubleValue()+score));
-            return zadd(key, existsScore.doubleValue()+score, value);
+            LOG.debug("zaddAndIncScore:key={},score={},value={},existsScore={},sum={}", key, score, value, existsScore, (existsScore.doubleValue() + score));
+            return zadd(key, existsScore.doubleValue() + score, value, DAY * 31);
         } catch ( Exception e ) {
             LOG.error("redis.zaddAndIncScore error:key=" + key + ",value=" + value + ",score=" + score, e);
         }
@@ -283,27 +293,20 @@ public class RedisClient {
 
     public static String KEY_OFFS_CONV_COUNT_ONDAY = "offs_conv_count_%s";
 
-    public static String keyOffsConvCount() {
-        return String.format(KEY_OFFS_CONV_COUNT_ONDAY, DateFormatUtils.format(Calendar.getInstance(), "yyyyMMddHH"));
+    public static String keyOffsConvCount(String df) {
+        return String.format(KEY_OFFS_CONV_COUNT_ONDAY, DateFormatUtils.format(Calendar.getInstance(), df));
     }
 
     public static String KEY_OFFS_CLIK_COUNT_ONDAY = "offs_clik_count_%s";
 
-    public static String keyOffsClikCount() {
-        return String.format(KEY_OFFS_CLIK_COUNT_ONDAY, DateFormatUtils.format(Calendar.getInstance(), "yyyyMMddHH"));
+    public static String keyOffsClikCount(String df) {
+        return String.format(KEY_OFFS_CLIK_COUNT_ONDAY, DateFormatUtils.format(Calendar.getInstance(), df));
     }
 
     public static String KEY_PRE_AFFS_IN_OFF_ONDAY = "affs_in_offer_%s_%s";
 
     public static String keyAffsInOff(String offId) {
         return String.format(KEY_PRE_AFFS_IN_OFF_ONDAY, offId, DateFormatUtils.format(Calendar.getInstance(), "yyyyMMdd"));
-    }
-
-    public static void main(String[] args) {
-        System.out.println(keyOffsConvCount());
-        System.out.println(keyOffsClikCount());
-        System.out.println(keyAffsInOff("111"));
-        System.out.println(secondFromNextWeekZero());
     }
 
 }

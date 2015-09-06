@@ -219,8 +219,11 @@ public class CRAggregationBolt implements IRichBolt, Constant {
 
                             //Redis存储
                             redisClient.saddAndExpireAtNextWeek(RedisClient.keyAffsInOff(offerId), affId);
-                            redisClient.zaddAndIncScore(RedisClient.keyOffsClikCount(), offClikCount, offerId);
-                            redisClient.zaddAndIncScore(RedisClient.keyOffsConvCount(), offConvCount, offerId);
+                            //TODO 双写一段时间后，删除按小时的数据 20150906
+                            redisClient.zaddAndIncScore(RedisClient.keyOffsClikCount("yyyyMMddHH"), offClikCount, offerId);
+                            redisClient.zaddAndIncScore(RedisClient.keyOffsConvCount("yyyyMMddHH"), offConvCount, offerId);
+                            redisClient.zaddAndIncScore(RedisClient.keyOffsClikCount("yyyyMMddHHmm"), offClikCount, offerId);
+                            redisClient.zaddAndIncScore(RedisClient.keyOffsConvCount("yyyyMMddHHmm"), offConvCount, offerId);
                         }
                     }
 
