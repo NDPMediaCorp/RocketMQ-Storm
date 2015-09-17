@@ -19,7 +19,7 @@ public class RedisClient {
 
     private static Logger LOG = LoggerFactory.getLogger(RedisClient.class);
 
-    public static final int SECOND = 1000;
+    public static final int SECOND = 1;
 
     public static final int MINUTE = 60 * SECOND;
 
@@ -110,15 +110,15 @@ public class RedisClient {
         return null;
     }
 
-    public Long zadd(String key, double score, String value, Integer expire) {
+    public Long zadd(String key, double score, String value, int expire) {
 
         Jedis jedis = null;
         try {
             jedis = pool.getResource();
             Long result = jedis.zadd(key, score, value);
-//            if ( null != expire ) {
-//                jedis.expire(key, expire);
-//            }
+            if ( 0 != expire ) {
+                jedis.expire(key, expire);
+            }
             return result;
         } catch ( JedisConnectionException e ) {
             LOG.error("RedisClient Error:", e);
@@ -307,6 +307,10 @@ public class RedisClient {
 
     public static String keyAffsInOff(String offId) {
         return String.format(KEY_PRE_AFFS_IN_OFF_ONDAY, offId, DateFormatUtils.format(Calendar.getInstance(), "yyyyMMdd"));
+    }
+
+    public static void main(String[] args) {
+        RedisClient.getInstance().zaddAndIncScore("test111",100,"1");
     }
 
 }

@@ -3,7 +3,7 @@ rocketmq.spout.topic=T_YMREDIRECTOR_QUEUE_TRACE_EVENT
 rocketmq.spout.topic.tag=*
 
 topology.name=TRACE_EVENT
-topology.spout.parallel=3
+topology.spout.parallel=4
 topology.bolt.parallel=1
 
 topology.acker.executors=1
