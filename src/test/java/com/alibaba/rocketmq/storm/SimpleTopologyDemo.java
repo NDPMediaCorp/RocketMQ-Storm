@@ -1,5 +1,6 @@
 package com.alibaba.rocketmq.storm;
 
+import com.alibaba.rocketmq.storm.bolt.RocketMqBolt;
 import org.apache.commons.lang.math.NumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,7 +14,6 @@ import backtype.storm.generated.StormTopology;
 import backtype.storm.topology.BoltDeclarer;
 import backtype.storm.topology.TopologyBuilder;
 
-import com.alibaba.rocketmq.storm.bolt.RocketMqBolt;
 import com.alibaba.rocketmq.storm.domain.RocketMQConfig;
 import com.alibaba.rocketmq.storm.domain.RocketMQSpouts;
 import com.alibaba.rocketmq.storm.internal.tools.ConfigUtils;
