@@ -15,7 +15,9 @@ public class AggregationResult {
 
     private long totalCount;
 
-    private double avgResponseTime;
+    private boolean isClick;
+
+//    private double avgResponseTime; // 暂时不需要
 
     public String getOffId() {
         return offId;
@@ -41,11 +43,13 @@ public class AggregationResult {
         this.totalCount = totalCount;
     }
 
-    public double getAvgResponseTime() {
-        return avgResponseTime;
+    public boolean isClick() {
+
+        return isClick;
     }
 
-    public void setAvgResponseTime(double avgResponseTime) {
-        this.avgResponseTime = avgResponseTime;
+    public void setClick(boolean isClick) {
+
+        this.isClick = isClick;
     }
 }
