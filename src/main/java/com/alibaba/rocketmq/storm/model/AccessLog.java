@@ -2,7 +2,6 @@ package com.alibaba.rocketmq.storm.model;
 
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.rocketmq.storm.util.TransactionUtil;
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -181,7 +180,7 @@ public class AccessLog {
         if ( this.request == null || this.request.length() == 0 ) {
             return null;
         }
-        String[] arr = this.request.split("\\?|&");
+        String[] arr = this.request.split("\\?|&| ");
         JSONObject obj = new JSONObject();
         for ( String s : arr ) {
             if ( s.contains("=") ) {
@@ -213,6 +212,18 @@ public class AccessLog {
         System.out.println(SIMPLE_DATE_FORMAT.format(new Date()));
         System.out.println(getDate("21/Sep/2015:08:00:02 +0000"));
         System.out.println(parseReginFromUpstreamAddr("10.2.10.11:8080"));
+        String a = "/trace?offer_id=104259&aff_id=13468&aff_sub=13894046979 HTTP/1.1";
+        String[] arr = a.split("\\?|&| ");
+        JSONObject obj = new JSONObject();
+        for ( String s : arr ) {
+            if ( s.contains("=") ) {
+                String[] kvString = s.split("=");
+                if ( null != kvString && kvString.length >= 2 ) {
+                    obj.put(kvString[0], kvString[1]);
+                }
+            }
+        }
+        System.out.println(obj);
     }
 
     public boolean isFull() {
