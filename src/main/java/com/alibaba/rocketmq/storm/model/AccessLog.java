@@ -41,7 +41,7 @@ public class AccessLog {
     /* --------------- */
     private static final String SEPARATOR = "-_-";
 
-    private boolean isFull;//log信息是否是完整的
+    private boolean isFull = false;//log信息是否是完整的
 
     private boolean isClick;//该request是否为click请求
 
@@ -99,6 +99,8 @@ public class AccessLog {
             logInfo = json.getString("message");
         }catch ( Exception e ){
             LOG.error("AccessLog parse Error:logInfo="+logInfo,e);
+            this.isFull = false;
+            return;
         }
         String[] logArray = logInfo.split(SEPARATOR);
         if ( null == logArray || logArray.length < 13 ) {
@@ -138,7 +140,10 @@ public class AccessLog {
                 offId = String.valueOf(result[4]);
             }
         }
-        return StringUtils.defaultIfBlank(offId, "0");
+        if ( null == offId || offId.length() == 0 ){
+            return "0";
+        }
+        return offId;
     }
 
     public String affiliateId() {
@@ -153,7 +158,10 @@ public class AccessLog {
                 affId = String.valueOf(result[3]);
             }
         }
-        return StringUtils.defaultIfBlank(affId, "0");
+        if ( null == affId || affId.length() == 0 ){
+            return "0";
+        }
+        return affId;
     }
 
     public static String parseReginFromUpstreamAddr(String upstreamAddr) {

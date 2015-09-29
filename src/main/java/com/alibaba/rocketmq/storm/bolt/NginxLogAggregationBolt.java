@@ -129,7 +129,7 @@ public class NginxLogAggregationBolt implements IRichBolt, Constant {
                 aggregationResult.setAffId(accessLog.affiliateId());
                 aggregationResult.setClick(accessLog.isClick());
             } else {
-                aggregationResult = regionResultMap.get(accessLog.getRegion());
+                aggregationResult = regionResultMap.get(regionMapKey);
                 aggregationResult.setTotalCount(aggregationResult.getTotalCount() + 1);
             }
         }
@@ -172,6 +172,9 @@ public class NginxLogAggregationBolt implements IRichBolt, Constant {
                         for ( Map.Entry<String, AggregationResult> regionMapEntry : regionResultMap.entrySet() ) {
                             result = regionMapEntry.getValue();
                             String[] region = entry.getKey().split("@");
+                            if ( null == region || region.length <= 1 ){
+                                continue;
+                            }
                             if ( COLUMN_NCLICK.equals(region[0]) ) {
                                 nclick.append(", ").append(region[1]).append(": ").append(result.getTotalCount());
                             } else {
