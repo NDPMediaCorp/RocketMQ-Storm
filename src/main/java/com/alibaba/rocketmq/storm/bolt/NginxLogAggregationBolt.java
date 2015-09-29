@@ -40,7 +40,7 @@ public class NginxLogAggregationBolt implements IRichBolt, Constant {
 
     private OutputCollector outputCollector;
 
-    private static final String TABLE_NAME = "eagle_log", COLUMN_FAMILY = "nginx", COLUMN_REGION = "region", COLUMN_NCLICK = "nclick", COLUMN_NCONV = "nconv";
+    private static final String TABLE_NAME = "eagle_log", COLUMN_FAMILY = "nginx", COLUMN_NCLICK = "nclick", COLUMN_NCONV = "nconv";
 
     private static final Charset DEFAULT_CHARSET = Charset.forName("UTF-8");
 

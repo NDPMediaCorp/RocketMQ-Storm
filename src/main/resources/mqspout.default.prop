@@ -1,9 +1,9 @@
-rocketmq.spout.consumer.group=CG_EAGLE_QUEUE_TRACE_EVENT
-rocketmq.spout.topic=T_YMREDIRECTOR_QUEUE_TRACE_EVENT
+rocketmq.spout.consumer.group=CG_EAGLE_FLUME_NGINX
+rocketmq.spout.topic=T_EAGLE_FLUME_NGINX
 rocketmq.spout.topic.tag=*
 
-topology.name=TRACE_EVENT
-topology.spout.parallel=4
+topology.name=EAGLE_FLUME_EVENT
+topology.spout.parallel=3
 topology.bolt.parallel=1
 
 topology.acker.executors=1
