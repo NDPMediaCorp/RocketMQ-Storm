@@ -199,14 +199,11 @@
                 </exclusion>
             </exclusions>
         </dependency>
-
-        <!--
         <dependency>
-            <groupId>org.apache.hbase</groupId>
-            <artifactId>hbase-server</artifactId>
-            <version>0.98.6-cdh5.2.0</version>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
+            <version>2.6</version>
         </dependency>
-        -->
 
     </dependencies>
 
