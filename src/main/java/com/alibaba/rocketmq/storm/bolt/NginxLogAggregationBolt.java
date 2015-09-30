@@ -171,7 +171,7 @@ public class NginxLogAggregationBolt implements IRichBolt, Constant {
 
                         for ( Map.Entry<String, AggregationResult> regionMapEntry : regionResultMap.entrySet() ) {
                             result = regionMapEntry.getValue();
-                            String[] region = entry.getKey().split("@");
+                            String[] region = regionMapEntry.getKey().split("@");
                             if ( null == region || region.length <= 1 ){
                                 continue;
                             }
