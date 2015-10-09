@@ -11,6 +11,8 @@ topology.workers=4
 topology.max.spout.pending=100
 topology.message.timeout.secs=60
 
+topology.jvm＝-Xms1g -Xmx1g
+
 topology.jvm=-Duser.timezone=UTC
 
 rocketmq.spout.ordered=false
