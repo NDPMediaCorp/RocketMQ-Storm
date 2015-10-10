@@ -61,6 +61,10 @@ public class AccessLog {
 
     private static final String KEY_CLICK = "/trace?", KEY_CONV = "/conv?";
 
+    private String offId;
+
+    private String affId;
+
     /*
 
         '$request_time-_-$remote_addr-_-$host-_-$upstream_addr-_-$upstream_status-_-$time_local-_-$request-_-$status-_-$body_bytes_sent-_-$http_referer-_
@@ -83,6 +87,10 @@ public class AccessLog {
         .154_EDi_XL_EDi_1D7D6v1E339vu466_EDi_4001_EDi_061FFw77-F3D5-4006-9631-20u2Fvw904wF_EDi_15 HTTP/1.1-_-302-_-541-_---_-Mozilla/5.0 (Linux; U; Android 4
         .2.2; es-us; HUAWEI Y600-U351 Build/HUAWEIY600-U351) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30-_---_-0.003",
         "time":"1443429673","tag":"lbs.lbs_vncc_access.201.294"}
+
+        {"message":"0.007-_-200.219.198.111-_-global.ymtracking.com-_-10.5.10.11:8080-_-200-_-28/Sep/2015:08:50:26 +0000-_-GET
+        /conv?transaction_id=17859d29c-1f85-787d-a2fdc1a36d0391862a2637152e1a5c935c03c5fb8360011&source=Pmovil HTTP/1.0-_-200-_-84-_---_---_---_-0.002",
+        "time":"1443430226","tag":"lbs.lbs_vncc_access.201.294"}
      */
     public AccessLog(String logInfo) {
 
@@ -91,13 +99,13 @@ public class AccessLog {
         }
         try {
             JSONObject json = JSONObject.parseObject(logInfo);
-            if ( null == json || json.getString("message") == null ){
+            if ( null == json || json.getString("message") == null ) {
                 this.isFull = false;
                 return;
             }
             logInfo = json.getString("message");
-        }catch ( Exception e ){
-            LOG.error("AccessLog parse Error:logInfo="+logInfo,e);
+        } catch ( Exception e ) {
+            LOG.error("AccessLog parse Error:logInfo=" + logInfo, e);
             this.isFull = false;
             return;
         }
@@ -113,6 +121,7 @@ public class AccessLog {
             this.httpUserAgent = logArray[10];
             this.upstreamResponseTime = logArray[12];
             this.region = parseReginFromUpstreamAddr(this.upstreamAddr);
+            JSONObject obj = getRequestParamKV();
             if ( this.request.contains(KEY_CLICK) ) {
                 this.isClick = true;
                 this.isFull = true;
@@ -122,42 +131,50 @@ public class AccessLog {
             } else {
                 this.isFull = false;
             }
+            this.offId = offerId(obj);
+            this.affId = affiliateId(obj);
 
         }
 
     }
 
-    public String offerId() {
+    private String offerId(JSONObject requestParam) {
 
-        String offId = null;
-        if ( this.isFull && isClick ) {
-            offId = getRequestParamKV().getString("offer_id");//aff_id
-        } else if ( this.isFull && !isClick ) {
-            String tranId = getRequestParamKV().getString("transaction_id");
+        String offId = "0";
+        if ( !this.isFull || null == requestParam || requestParam.containsKey("offer_id") ) {
+            return offId;
+        }
+        if ( isClick ) {
+            offId = requestParam.getString("offer_id");//aff_id
+        } else {
+            String tranId = requestParam.getString("transaction_id");
             long[] result = TransactionUtil.decode(tranId);
             if ( null != result && result.length == 5 ) {
                 offId = String.valueOf(result[4]);
             }
         }
-        if ( null == offId || offId.length() == 0 ){
+        if ( null == offId || offId.length() == 0 ) {
             return "0";
         }
         return offId;
     }
 
-    public String affiliateId() {
+    private String affiliateId(JSONObject requestParam) {
 
-        String affId = null;
-        if ( this.isFull && this.isClick ) {
-            affId = getRequestParamKV().getString("aff_id");//aff_id
-        } else if ( this.isFull && !isClick ) {
-            String tranId = getRequestParamKV().getString("transaction_id");
+        String affId = "0";
+        if ( !this.isFull || null == requestParam || requestParam.containsKey("offer_id") ) {
+            return affId;
+        }
+        if ( this.isClick ) {
+            affId = requestParam.getString("aff_id");//aff_id
+        } else {
+            String tranId = requestParam.getString("transaction_id");
             long[] result = TransactionUtil.decode(tranId);
             if ( null != result && result.length == 5 ) {
                 affId = String.valueOf(result[3]);
             }
         }
-        if ( null == affId || affId.length() == 0 ){
+        if ( null == affId || affId.length() == 0 ) {
             return "0";
         }
         return affId;
@@ -168,9 +185,10 @@ public class AccessLog {
         if ( null != upstreamAddr && upstreamAddr.split("\\.").length == 4 ) {//10.2.10.11:8080
             String[] addrs = upstreamAddr.split("\\.");
             if ( NumberUtils.isDigits(addrs[0]) && NumberUtils.isDigits(addrs[1]) ) {
-                return addrs[0] + "." + addrs[1];
+                return addrs[0] + "-" + addrs[1];
             }
         }
+        LOG.warn("unknow region:{}"+upstreamAddr);
         return "unknown";
     }
 
@@ -207,23 +225,28 @@ public class AccessLog {
         return null;
     }
 
-    public static void main(String[] args) {
+    public String getOffId() {
+        return offId;
+    }
 
-        System.out.println(SIMPLE_DATE_FORMAT.format(new Date()));
-        System.out.println(getDate("21/Sep/2015:08:00:02 +0000"));
-        System.out.println(parseReginFromUpstreamAddr("10.2.10.11:8080"));
-        String a = "/trace?offer_id=104259&aff_id=13468&aff_sub=13894046979 HTTP/1.1";
-        String[] arr = a.split("\\?|&| ");
-        JSONObject obj = new JSONObject();
-        for ( String s : arr ) {
-            if ( s.contains("=") ) {
-                String[] kvString = s.split("=");
-                if ( null != kvString && kvString.length >= 2 ) {
-                    obj.put(kvString[0], kvString[1]);
-                }
-            }
-        }
-        System.out.println(obj);
+    public void setOffId(String offId) {
+        this.offId = offId;
+    }
+
+    public String getAffId() {
+        return affId;
+    }
+
+    public void setAffId(String affId) {
+        this.affId = affId;
+    }
+
+    public static void main(String[] args) {
+        String loginfo = "{\"message\":\"0.007-_-200.219.198.111-_-global.ymtracking.com-_-10.5.10.11:8080-_-200-_-28/Sep/2015:08:50:26 +0000-_-GET " +
+                "/conv?transaction_id=17859d29c-1f85-787d-a2fdc1a36d0391862a2637152e1a5c935c03c5fb8360011&source=Pmovil HTTP/1.0-_-200-_-84-_---_---_---_-0" +
+                ".002\",\"time\":\"1443430226\",\"tag\":\"lbs.lbs_vncc_access.201.294\"}";
+        AccessLog log = new AccessLog(loginfo);
+        System.out.println(log);
     }
 
     public boolean isFull() {

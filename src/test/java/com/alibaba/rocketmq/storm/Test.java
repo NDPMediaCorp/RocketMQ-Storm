@@ -42,8 +42,8 @@ public class Test {
             return;
         }
         HashMap<String, HashMap<String, AggregationResult>> parserAggResultMap = new HashMap<>();
-        String offerId = accessLog.offerId();
-        String affiliateId = accessLog.affiliateId();
+        String offerId = accessLog.getOffId();
+        String affiliateId = accessLog.getAffId();
         String mapKey = Helper.generateKeyForHBase(offerId, affiliateId);
         HashMap<String, AggregationResult> regionResultMap1;
         String regionMapKey = accessLog.isClick() ? COLUMN_NCLICK + "@" + accessLog.getRegion() : COLUMN_NCONV + "@" + accessLog.getRegion();
@@ -52,16 +52,16 @@ public class Test {
             regionResultMap1 = new HashMap<>();
             aggregationResult = new AggregationResult();
             aggregationResult.setTotalCount(1);
-            aggregationResult.setOffId(accessLog.offerId());
-            aggregationResult.setAffId(accessLog.affiliateId());
+            aggregationResult.setOffId(accessLog.getOffId());
+            aggregationResult.setAffId(accessLog.getAffId());
             aggregationResult.setClick(accessLog.isClick());
         } else {
             regionResultMap1 = parserAggResultMap.get(mapKey);
             if ( !regionResultMap1.containsKey(regionMapKey) ) {
                 aggregationResult = new AggregationResult();
                 aggregationResult.setTotalCount(1);
-                aggregationResult.setOffId(accessLog.offerId());
-                aggregationResult.setAffId(accessLog.affiliateId());
+                aggregationResult.setOffId(accessLog.getOffId());
+                aggregationResult.setAffId(accessLog.getAffId());
                 aggregationResult.setClick(accessLog.isClick());
             } else {
                 aggregationResult = regionResultMap1.get(regionMapKey);
