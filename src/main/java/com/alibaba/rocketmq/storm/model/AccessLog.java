@@ -141,12 +141,12 @@ public class AccessLog {
     private String offerId(JSONObject requestParam) {
 
         String offId = "0";
-        if ( !this.isFull || null == requestParam || requestParam.containsKey("offer_id") ) {
+        if ( !this.isFull || null == requestParam ) {
             return offId;
         }
-        if ( isClick ) {
+        if ( requestParam.containsKey("offer_id") ) {
             offId = requestParam.getString("offer_id");//aff_id
-        } else {
+        } else if(requestParam.containsKey("transaction_id")){
             String tranId = requestParam.getString("transaction_id");
             long[] result = TransactionUtil.decode(tranId);
             if ( null != result && result.length == 5 ) {
@@ -162,12 +162,12 @@ public class AccessLog {
     private String affiliateId(JSONObject requestParam) {
 
         String affId = "0";
-        if ( !this.isFull || null == requestParam || requestParam.containsKey("offer_id") ) {
+        if ( !this.isFull || null == requestParam  ) {
             return affId;
         }
-        if ( this.isClick ) {
+        if ( requestParam.containsKey("aff_id") ) {
             affId = requestParam.getString("aff_id");//aff_id
-        } else {
+        } else if(requestParam.containsKey("transaction_id")){
             String tranId = requestParam.getString("transaction_id");
             long[] result = TransactionUtil.decode(tranId);
             if ( null != result && result.length == 5 ) {
