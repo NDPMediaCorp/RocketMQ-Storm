@@ -185,7 +185,7 @@ public class AccessLog {
         if ( null != upstreamAddr && upstreamAddr.split("\\.").length == 4 ) {//10.2.10.11:8080
             String[] addrs = upstreamAddr.split("\\.");
             if ( NumberUtils.isDigits(addrs[0]) && NumberUtils.isDigits(addrs[1]) ) {
-                return addrs[0] + "-" + addrs[1];
+                return String.valueOf("'" + addrs[0] + "." + addrs[1]+"'");
             }
         }
         LOG.warn("unknow region:{}"+upstreamAddr);
