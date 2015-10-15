@@ -69,6 +69,12 @@
     </developers>
 
     <dependencies>
+        <!-- kafka client -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka_2.10</artifactId>
+            <version>0.8.2.1</version>
+        </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
@@ -105,26 +111,6 @@
             <artifactId>joda-time</artifactId>
             <version>2.7</version>
         </dependency>
-        <!--
-        <dependency>
-            <groupId>com.alibaba.jstorm</groupId>
-            <artifactId>jstorm-client</artifactId>
-            <version>0.9.6.3</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.alibaba.jstorm</groupId>
-            <artifactId>jstorm-client-extension</artifactId>
-            <version>0.9.6.3</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.alibaba.jstorm</groupId>
-            <artifactId>jstorm-server</artifactId>
-            <version>0.9.6.3</version>
-            <scope>provided</scope>
-        </dependency>
-        -->
         <dependency>
             <groupId>com.alibaba.rocketmq</groupId>
             <artifactId>rocketmq-client</artifactId>
@@ -147,7 +133,7 @@
             <artifactId>log4j</artifactId>
             <version>${log4j.version}</version>
             <optional>true</optional>
-            <scope>provided</scope>
+            <!--<scope>provided</scope>-->
         </dependency>
         <dependency>
             <groupId>junit</groupId>
