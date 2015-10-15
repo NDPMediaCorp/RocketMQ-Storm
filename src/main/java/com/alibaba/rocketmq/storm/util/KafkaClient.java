@@ -44,6 +44,9 @@ public class KafkaClient {
             props.put("queue.buffering.max.ms", Integer.valueOf(bundle.getString("kafka.producer.queue.buffering.max.ms")));
             props.put("queue.buffering.max.messages", Integer.valueOf(bundle.getString("kafka.producer.queue.buffering.max.messages")));
 
+            props.put("batch.num.messages",Integer.valueOf(bundle.getString("kafka.producer.batch.num.messages")));
+            props.put("queue.enqueue.timeout.ms",Integer.valueOf(bundle.getString("kafka.producer.queue.enqueue.timeout.ms")));
+
 
             topic = bundle.getString("kafka.topic");
             LOG.warn("KafkaConfig : " + JSONObject.toJSONString(props) + "---kafka_topic=" + topic + "---");
