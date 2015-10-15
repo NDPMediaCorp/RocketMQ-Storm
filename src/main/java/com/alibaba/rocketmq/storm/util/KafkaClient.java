@@ -6,6 +6,7 @@ import kafka.producer.KeyedMessage;
 import kafka.producer.ProducerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.Int;
 
 import java.util.Properties;
 import java.util.ResourceBundle;
@@ -38,10 +39,10 @@ public class KafkaClient {
             // key.serializer.class默认为serializer.class
             //        props.put("key.serializer.class", bundle.getString("kafka.key.serializer.class"));
             props.put("request.required.acks", Short.valueOf(bundle.getString("kafka.producer.ack")));
-            props.put("request.timeout.ms", bundle.getString("kafka.producer.request.timeout.ms"));
+            props.put("request.timeout.ms", Integer.valueOf(bundle.getString("kafka.producer.request.timeout.ms")));
             props.put("producer.type", bundle.getString("kafka.producer.type"));
-            props.put("queue.buffering.max.ms", bundle.getString("kafka.producer.queue.buffering.max.ms"));
-            props.put("queue.buffering.max.messages", bundle.getString("kafka.producer.queue.buffering.max.messages"));
+            props.put("queue.buffering.max.ms", Integer.valueOf(bundle.getString("kafka.producer.queue.buffering.max.ms")));
+            props.put("queue.buffering.max.messages", Integer.valueOf(bundle.getString("kafka.producer.queue.buffering.max.messages")));
 
 
             topic = bundle.getString("kafka.topic");
