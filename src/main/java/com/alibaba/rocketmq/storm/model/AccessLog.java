@@ -1,6 +1,7 @@
 package com.alibaba.rocketmq.storm.model;
 
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.rocketmq.storm.util.KafkaClient;
 import com.alibaba.rocketmq.storm.util.TransactionUtil;
 import org.apache.commons.lang.math.NumberUtils;
 import org.slf4j.Logger;
@@ -133,9 +134,11 @@ public class AccessLog {
             }
             this.offId = offerId(obj);
             this.affId = affiliateId(obj);
-
         }
 
+        if ( this.isFull ){
+            KafkaClient.getInstance().send(logInfo);
+        }
     }
 
     private String offerId(JSONObject requestParam) {

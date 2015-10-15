@@ -55,14 +55,14 @@ public class KafkaClient {
 
     }
 
-    private static KafkaClient getInstance() {
+    public static KafkaClient getInstance() {
         if ( kafkaClient == null ) {
             kafkaClient = new KafkaClient();
         }
         return kafkaClient;
     }
 
-    public static void send(String message) {
+    public void send(String message) {
         try {
             KeyedMessage<String, String> data = new KeyedMessage<>(topic, message);
             producer.send(data);
