@@ -37,7 +37,7 @@ public class KafkaClient {
             //        props.put("serializer.class", bundle.getString("kafka.serializer.class"));
             // key.serializer.class默认为serializer.class
             //        props.put("key.serializer.class", bundle.getString("kafka.key.serializer.class"));
-            props.put("request.required.acks", Integer.valueOf(bundle.getString("kafka.producer.ack")));
+            props.put("request.required.acks", Short.valueOf(bundle.getString("kafka.producer.ack")));
             props.put("request.timeout.ms", bundle.getString("kafka.producer.request.timeout.ms"));
             props.put("producer.type", bundle.getString("kafka.producer.type"));
             props.put("queue.buffering.max.ms", bundle.getString("kafka.producer.queue.buffering.max.ms"));
