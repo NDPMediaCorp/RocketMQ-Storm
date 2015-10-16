@@ -10,6 +10,7 @@ import scala.Int;
 
 import java.util.Properties;
 import java.util.ResourceBundle;
+import java.util.UUID;
 
 /**
  * KafkaClient Created with mythopoet.
