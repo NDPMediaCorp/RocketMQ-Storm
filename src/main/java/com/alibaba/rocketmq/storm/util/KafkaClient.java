@@ -39,14 +39,14 @@ public class KafkaClient {
             //        props.put("serializer.class", bundle.getString("kafka.serializer.class"));
             // key.serializer.class默认为serializer.class
             //        props.put("key.serializer.class", bundle.getString("kafka.key.serializer.class"));
-            props.put("request.required.acks", Short.valueOf(bundle.getString("kafka.producer.ack")));
+//            props.put("request.required.acks", Short.valueOf(bundle.getString("kafka.producer.ack")));
             props.put("request.timeout.ms", Integer.valueOf(bundle.getString("kafka.producer.request.timeout.ms")));
             props.put("producer.type", bundle.getString("kafka.producer.type"));
-            props.put("queue.buffering.max.ms", Integer.valueOf(bundle.getString("kafka.producer.queue.buffering.max.ms")));
-            props.put("queue.buffering.max.messages", Integer.valueOf(bundle.getString("kafka.producer.queue.buffering.max.messages")));
-
-            props.put("batch.num.messages",Integer.valueOf(bundle.getString("kafka.producer.batch.num.messages")));
-            props.put("queue.enqueue.timeout.ms",Integer.valueOf(bundle.getString("kafka.producer.queue.enqueue.timeout.ms")));
+//            props.put("queue.buffering.max.ms", Integer.valueOf(bundle.getString("kafka.producer.queue.buffering.max.ms")));
+//            props.put("queue.buffering.max.messages", Integer.valueOf(bundle.getString("kafka.producer.queue.buffering.max.messages")));
+//
+//            props.put("batch.num.messages",Integer.valueOf(bundle.getString("kafka.producer.batch.num.messages")));
+//            props.put("queue.enqueue.timeout.ms",Integer.valueOf(bundle.getString("kafka.producer.queue.enqueue.timeout.ms")));
 
 
             topic = bundle.getString("kafka.topic");
