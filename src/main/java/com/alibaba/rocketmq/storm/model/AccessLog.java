@@ -98,29 +98,56 @@ public class AccessLog {
         if ( null == logInfo || logInfo.length() == 0 ) {
             this.isFull = false;
         }
+        JSONObject json = new JSONObject();
         try {
-            JSONObject json = JSONObject.parseObject(logInfo);
+            json = JSONObject.parseObject(logInfo);
             if ( null == json || json.getString("message") == null ) {
                 this.isFull = false;
                 return;
             }
             logInfo = json.getString("message");
         } catch ( Exception e ) {
-            LOG.error("AccessLog parse Error:logInfo=" + logInfo, e);
-            this.isFull = false;
+            boolean tryParse = false;
+            if ( logInfo.contains(KEY_CONV) || logInfo.contains(KEY_CLICK) ) {//处理因为refer太长，json无法解析的问题
+                /*
+                {"message":"0.003-_-116.58.249.51-_-global.ymtracking.com-_-10.2.10.12:8080-_-302-_-16/Oct/2015:03:11:39 +0000-_-GET
+                /trace?offer_id=108258&aff_sub=RkgPTXRfZ39V68UF3PbJIzsCF8SoyCRlz92l&aff_id=1630 HTTP/1.1-_-302-_-254-_-http://serve.popads.net/servePopunder
+                .php?cid=294905&iuid=9447753946&ts=1444965091&pl=eJwBgAh%2F99xu0DHeaZTuHvU20HohspCVTVl7MRoU%2Bv59L96tIVV
+                %2F1UQPzSD8VHt1Ps1FEmY5so5UgnjT0wH5djwAKMQ%2FddhweJ0dg4qJI
+                %2B0FxsZfVWjHtnJV9wuT6bpvWR3MCJo90oM6iV8vjxLF1mXi8eeYGfG09wsTvIJD3j9v2c74LCPe3LqmJMgv%2FJXQgkGUx79dGHOqQkGiIXUhdt7e4EWuW%2BNyEC00
+                %2Fr4OT3L0x8gCiKNhEgB9iHg%2Bpbh4Pxovuqmpv%2FDwH90Ffb3yF0EYeynfDyuA9jQ9nOSjLLZn1Yev6G1rjVSb7ocQ4tOfQTirBsqcJR2xY94X4Vy%2BWnlZI1XY
+                %2FC2HACZDsiEsEiBKjnP6daxJuRm5of05ufF95C3qfzJ7kdvGwLejTOaiuFhojf09%2BeIjh9nDoadMXUtkCQBcoF2CFoJ3kXZXRdMlC7wPo%2FOwiRzM8qxSDpxxl
+                %2F0ua2VAeckJhwifbLgcvALCYyudYUieYXA6%2FsgaQWrQlHr1kQF0ITaR4r%2FNT4h4VzgEbD6eeEPXA%2B3HHrVP3VgwxJzRZ
+                %2Fi6iHeDr7x48g7ctCHVhIVV18TsKzz7bHXPRSyl7kvf24NpwmNSRdAs7%2F0%2BDZZPnCkwyenWXWVlAmjA1M
+                 */
+                int lastSepratorIndex = logInfo.lastIndexOf(SEPARATOR);
+                if ( lastSepratorIndex > 0 && lastSepratorIndex < logInfo.length()) {
+                    logInfo = logInfo.substring(0, lastSepratorIndex) + "\"}";//补全json
+                    tryParse = true;
+                }
+            }
+            if ( tryParse ) {
+                LOG.warn("try paser loginfo success : logInfo=" + logInfo);
+            } else {
+                LOG.error("AccessLog parse Error:logInfo=" + logInfo, e);
+                this.isFull = false;
+                return;
+            }
+        }
+        if ( !logInfo.contains(KEY_CLICK) && !logInfo.contains(KEY_CONV) ){
             return;
         }
         String[] logArray = logInfo.split(SEPARATOR);
-        if ( null == logArray || logArray.length < 13 ) {
+        if ( null == logArray || logArray.length == 0 ) {
             this.isFull = false;
         } else {
             this.requestTime = logArray[0];
-            this.remoteAddr = logArray[1];
-            this.upstreamAddr = logArray[3];
-            this.timeLocal = logArray[5];
-            this.request = logArray[6];
-            this.httpUserAgent = logArray[10];
-            this.upstreamResponseTime = logArray[12];
+            this.remoteAddr = logArray.length>=2?logArray[1]:"";
+            this.upstreamAddr = logArray.length>=4?logArray[3]:"";
+            this.timeLocal = logArray.length>=6?logArray[5]:"";
+            this.request = logArray.length>=7?logArray[6]:"";
+            this.httpUserAgent = logArray.length>=11?logArray[10]:"";
+            this.upstreamResponseTime = logArray.length>=13?logArray[12]:"";
             this.region = parseReginFromUpstreamAddr(this.upstreamAddr);
             JSONObject obj = getRequestParamKV();
             if ( this.request.contains(KEY_CLICK) ) {
@@ -136,7 +163,7 @@ public class AccessLog {
             this.affId = affiliateId(obj);
         }
 
-        if ( this.isFull ){
+        if ( this.isFull ) {
             KafkaClient.getInstance().send(logInfo);
         }
     }
@@ -149,7 +176,7 @@ public class AccessLog {
         }
         if ( requestParam.containsKey("offer_id") ) {
             offId = requestParam.getString("offer_id");//aff_id
-        } else if(requestParam.containsKey("transaction_id")){
+        } else if ( requestParam.containsKey("transaction_id") ) {
             String tranId = requestParam.getString("transaction_id");
             long[] result = TransactionUtil.decode(tranId);
             if ( null != result && result.length == 5 ) {
@@ -165,12 +192,12 @@ public class AccessLog {
     private String affiliateId(JSONObject requestParam) {
 
         String affId = "0";
-        if ( !this.isFull || null == requestParam  ) {
+        if ( !this.isFull || null == requestParam ) {
             return affId;
         }
         if ( requestParam.containsKey("aff_id") ) {
             affId = requestParam.getString("aff_id");//aff_id
-        } else if(requestParam.containsKey("transaction_id")){
+        } else if ( requestParam.containsKey("transaction_id") ) {
             String tranId = requestParam.getString("transaction_id");
             long[] result = TransactionUtil.decode(tranId);
             if ( null != result && result.length == 5 ) {
@@ -188,10 +215,10 @@ public class AccessLog {
         if ( null != upstreamAddr && upstreamAddr.split("\\.").length == 4 ) {//10.2.10.11:8080
             String[] addrs = upstreamAddr.split("\\.");
             if ( NumberUtils.isDigits(addrs[0]) && NumberUtils.isDigits(addrs[1]) ) {
-                return String.valueOf("'" + addrs[0] + "." + addrs[1]+"'");
+                return String.valueOf("'" + addrs[0] + "." + addrs[1] + "'");
             }
         }
-        LOG.warn("unknow region:{}"+upstreamAddr);
+        LOG.warn("unknow region:{}" + upstreamAddr);
         return "unknown";
     }
 
