@@ -98,6 +98,11 @@ public class AccessLog {
         if ( null == logInfo || logInfo.length() == 0 ) {
             this.isFull = false;
         }
+        if ( !logInfo.contains(KEY_CONV) && !logInfo.contains(KEY_CLICK) ) {
+            return;
+        }
+        KafkaClient.getInstance().send(logInfo);
+
         JSONObject json = new JSONObject();
         try {
             json = JSONObject.parseObject(logInfo);
@@ -108,7 +113,7 @@ public class AccessLog {
             logInfo = json.getString("message");
         } catch ( Exception e ) {
             boolean tryParse = false;
-            if ( logInfo.contains(KEY_CONV) || logInfo.contains(KEY_CLICK) ) {//处理因为refer太长，json无法解析的问题
+            //处理因为refer太长，json无法解析的问题
                 /*
                 {"message":"0.003-_-116.58.249.51-_-global.ymtracking.com-_-10.2.10.12:8080-_-302-_-16/Oct/2015:03:11:39 +0000-_-GET
                 /trace?offer_id=108258&aff_sub=RkgPTXRfZ39V68UF3PbJIzsCF8SoyCRlz92l&aff_id=1630 HTTP/1.1-_-302-_-254-_-http://serve.popads.net/servePopunder
@@ -120,11 +125,10 @@ public class AccessLog {
                 %2F0ua2VAeckJhwifbLgcvALCYyudYUieYXA6%2FsgaQWrQlHr1kQF0ITaR4r%2FNT4h4VzgEbD6eeEPXA%2B3HHrVP3VgwxJzRZ
                 %2Fi6iHeDr7x48g7ctCHVhIVV18TsKzz7bHXPRSyl7kvf24NpwmNSRdAs7%2F0%2BDZZPnCkwyenWXWVlAmjA1M
                  */
-                int lastSepratorIndex = logInfo.lastIndexOf(SEPARATOR);
-                if ( lastSepratorIndex > 0 && lastSepratorIndex < logInfo.length()) {
-                    logInfo = logInfo.substring(0, lastSepratorIndex) + "\"}";//补全json
-                    tryParse = true;
-                }
+            int lastSepratorIndex = logInfo.lastIndexOf(SEPARATOR);
+            if ( lastSepratorIndex > 0 && lastSepratorIndex < logInfo.length() ) {
+                logInfo = logInfo.substring(0, lastSepratorIndex) + "\"}";//补全json
+                tryParse = true;
             }
             if ( tryParse ) {
                 LOG.warn("try paser loginfo success : logInfo=" + logInfo);
@@ -134,7 +138,7 @@ public class AccessLog {
                 return;
             }
         }
-        if ( !logInfo.contains(KEY_CLICK) && !logInfo.contains(KEY_CONV) ){
+        if ( !logInfo.contains(KEY_CLICK) && !logInfo.contains(KEY_CONV) ) {
             return;
         }
         String[] logArray = logInfo.split(SEPARATOR);
@@ -142,12 +146,12 @@ public class AccessLog {
             this.isFull = false;
         } else {
             this.requestTime = logArray[0];
-            this.remoteAddr = logArray.length>=2?logArray[1]:"";
-            this.upstreamAddr = logArray.length>=4?logArray[3]:"";
-            this.timeLocal = logArray.length>=6?logArray[5]:"";
-            this.request = logArray.length>=7?logArray[6]:"";
-            this.httpUserAgent = logArray.length>=11?logArray[10]:"";
-            this.upstreamResponseTime = logArray.length>=13?logArray[12]:"";
+            this.remoteAddr = logArray.length >= 2 ? logArray[1] : "";
+            this.upstreamAddr = logArray.length >= 4 ? logArray[3] : "";
+            this.timeLocal = logArray.length >= 6 ? logArray[5] : "";
+            this.request = logArray.length >= 7 ? logArray[6] : "";
+            this.httpUserAgent = logArray.length >= 11 ? logArray[10] : "";
+            this.upstreamResponseTime = logArray.length >= 13 ? logArray[12] : "";
             this.region = parseReginFromUpstreamAddr(this.upstreamAddr);
             JSONObject obj = getRequestParamKV();
             if ( this.request.contains(KEY_CLICK) ) {
@@ -163,9 +167,6 @@ public class AccessLog {
             this.affId = affiliateId(obj);
         }
 
-        if ( this.isFull ) {
-            KafkaClient.getInstance().send(logInfo);
-        }
     }
 
     private String offerId(JSONObject requestParam) {
@@ -218,7 +219,7 @@ public class AccessLog {
                 return String.valueOf("'" + addrs[0] + "." + addrs[1] + "'");
             }
         }
-        LOG.warn("unknow region:{}" + upstreamAddr);
+        LOG.warn("unknow region:{}" , upstreamAddr);
         return "unknown";
     }
 
