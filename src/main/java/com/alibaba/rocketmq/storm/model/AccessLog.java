@@ -101,7 +101,6 @@ public class AccessLog {
         if ( !logInfo.contains(KEY_CONV) && !logInfo.contains(KEY_CLICK) ) {
             return;
         }
-        KafkaClient.getInstance().send(logInfo);
 
         JSONObject json = new JSONObject();
         try {
@@ -138,6 +137,9 @@ public class AccessLog {
                 return;
             }
         }
+
+        KafkaClient.getInstance().send(logInfo);//发送json中message的内容
+
         if ( !logInfo.contains(KEY_CLICK) && !logInfo.contains(KEY_CONV) ) {
             return;
         }
