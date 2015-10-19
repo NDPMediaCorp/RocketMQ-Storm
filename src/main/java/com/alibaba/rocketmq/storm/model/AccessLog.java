@@ -124,13 +124,20 @@ public class AccessLog {
                 %2F0ua2VAeckJhwifbLgcvALCYyudYUieYXA6%2FsgaQWrQlHr1kQF0ITaR4r%2FNT4h4VzgEbD6eeEPXA%2B3HHrVP3VgwxJzRZ
                 %2Fi6iHeDr7x48g7ctCHVhIVV18TsKzz7bHXPRSyl7kvf24NpwmNSRdAs7%2F0%2BDZZPnCkwyenWXWVlAmjA1M
                  */
-            int lastSepratorIndex = logInfo.lastIndexOf(SEPARATOR);
-            if ( lastSepratorIndex > 0 && lastSepratorIndex < logInfo.length() ) {
-                logInfo = logInfo.substring(0, lastSepratorIndex) + "\"}";//补全json
-                tryParse = true;
+            try {
+                int lastSepratorIndex = logInfo.lastIndexOf(SEPARATOR);
+                if ( lastSepratorIndex > 0 && lastSepratorIndex < logInfo.length() ) {
+                    logInfo = logInfo.substring(0, lastSepratorIndex) + "\"}";//补全json
+                    json = JSONObject.parseObject(logInfo);
+                    logInfo = json.getString("message");
+                    tryParse = true;
+                }
+            } catch ( Exception e1 ) {
+                LOG.error("try again parse Error:logInfo=" + logInfo, e1);
+                return;
             }
             if ( tryParse ) {
-                LOG.warn("try paser loginfo success : logInfo=" + logInfo);
+                LOG.warn("try again parse loginfo success : logInfo=" + logInfo);
             } else {
                 LOG.error("AccessLog parse Error:logInfo=" + logInfo, e);
                 this.isFull = false;
@@ -221,7 +228,7 @@ public class AccessLog {
                 return String.valueOf("'" + addrs[0] + "." + addrs[1] + "'");
             }
         }
-        LOG.warn("unknow region:{}" , upstreamAddr);
+        LOG.warn("unknow region:{}", upstreamAddr);
         return "unknown";
     }
 
