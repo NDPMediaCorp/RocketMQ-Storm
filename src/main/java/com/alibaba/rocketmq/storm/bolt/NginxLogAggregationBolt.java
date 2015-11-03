@@ -40,7 +40,8 @@ public class NginxLogAggregationBolt implements IRichBolt, Constant {
 
     private OutputCollector outputCollector;
 
-    private static final String TABLE_NAME = "eagle_log", COLUMN_FAMILY = "nginx", COLUMN_NCLICK = "nclick", COLUMN_NCONV = "nconv";
+    private static final String TABLE_NAME = "eagle_log", COLUMN_FAMILY = "nginx", COLUMN_NCLICK = "nclick", COLUMN_NCONV = "nconv",
+            EAGLE_SPOUT_SIGN_NGINX = "eagle_spout_sign_nginx";
 
     private static final Charset DEFAULT_CHARSET = Charset.forName("UTF-8");
 
@@ -106,6 +107,7 @@ public class NginxLogAggregationBolt implements IRichBolt, Constant {
         if ( !accessLog.isFull() ) {
             return;
         }
+        RedisClient.getInstance().zaddByTimeStamp(EAGLE_SPOUT_SIGN_NGINX,accessLog.getUpstreamAddr());
         HashMap<String, HashMap<String, AggregationResult>> parserAggResultMap = atomicReferenceRegion.get();
         String offerId = accessLog.getOffId();
         String affiliateId = accessLog.getAffId();

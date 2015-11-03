@@ -239,78 +239,8 @@ public class RedisClient {
         return result;
     }
 
-    public Long saddAndExpireAtNextWeek(String key, String... value) {
-        Long result = 0L;
-        Jedis jedis = null;
-        try {
-            jedis = pool.getResource();
-            result = jedis.sadd(key, value);
-            expireAt(key, secondFromNextWeekZero());
-        } catch ( JedisConnectionException e ) {
-            LOG.error("redis.saddAndExpireAtNextWeek error:key=" + key + ",value=" + value, e);
-            if ( null != jedis ) {
-                pool.returnBrokenResource(jedis);
-                jedis = null;
-            }
-        } finally {
-            if ( null != jedis )
-                jedis.close();
-        }
-        return result;
-    }
-
-    /**
-     * 累加 一个月过期
-     *
-     * @param key
-     * @param score
-     * @param value
-     * @return
-     */
-    public Long zaddAndIncScore(String key, double score, String value) {
-        try {
-            Double existsScore = zscore(key, value);
-            if ( null == existsScore ) {
-                existsScore = 0D;
-            }
-            LOG.debug("zaddAndIncScore:key={},score={},value={},existsScore={},sum={}", key, score, value, existsScore, (existsScore.doubleValue() + score));
-            return zadd(key, existsScore.doubleValue() + score, value, DAY * 31);
-        } catch ( Exception e ) {
-            LOG.error("redis.zaddAndIncScore error:key=" + key + ",value=" + value + ",score=" + score, e);
-        }
-        return null;
-    }
-
-    /** 下周零点的时间戳 */
-    public static int secondFromNextWeekZero() {
-        Calendar cal = Calendar.getInstance();
-        cal.add(Calendar.DAY_OF_YEAR, 7);
-        cal.set(Calendar.HOUR_OF_DAY, 0);
-        cal.set(Calendar.MINUTE, 0);
-        cal.set(Calendar.SECOND, 0);
-        return Integer.valueOf(cal.getTimeInMillis() / 1000 + "");
-    }
-
-    public static String KEY_OFFS_CONV_COUNT_ONDAY = "offs_conv_count_%s";
-
-    public static String keyOffsConvCount(String df) {
-        return String.format(KEY_OFFS_CONV_COUNT_ONDAY, DateFormatUtils.format(Calendar.getInstance(), df));
-    }
-
-    public static String KEY_OFFS_CLIK_COUNT_ONDAY = "offs_clik_count_%s";
-
-    public static String keyOffsClikCount(String df) {
-        return String.format(KEY_OFFS_CLIK_COUNT_ONDAY, DateFormatUtils.format(Calendar.getInstance(), df));
-    }
-
-    public static String KEY_PRE_AFFS_IN_OFF_ONDAY = "affs_in_offer_%s_%s";
-
-    public static String keyAffsInOff(String offId) {
-        return String.format(KEY_PRE_AFFS_IN_OFF_ONDAY, offId, DateFormatUtils.format(Calendar.getInstance(), "yyyyMMdd"));
-    }
-
-    public static void main(String[] args) {
-        RedisClient.getInstance().zaddAndIncScore("test111",100,"1");
+    public void zaddByTimeStamp(String key, String value) {
+        zadd(key, System.currentTimeMillis(), value, DAY * 30);
     }
 
 }
