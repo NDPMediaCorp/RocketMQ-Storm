@@ -54,6 +54,8 @@ public class NginxLogAggregationBolt implements IRichBolt, Constant {
 
     private volatile boolean stop = false;
 
+    private RedisClient redisClient = RedisClient.getInstance();
+
     @Override public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         this.outputCollector = collector;
 
@@ -77,9 +79,11 @@ public class NginxLogAggregationBolt implements IRichBolt, Constant {
         try {
             if ( msgObj instanceof MessageExt ) {
                 MessageExt msg = (MessageExt) msgObj;
-                RedisClient.getInstance().zaddByTimeStamp(EAGLE_SPOUT_SIGN_NGINX,msg.getBornHostString());
                 AccessLog accessLog = new AccessLog(new String(msg.getBody(), Charset.forName("UTF-8")));
-                processMsg4Region(accessLog);
+                if ( accessLog.isFull() ) {
+                    redisClient.zaddByTimeStamp(EAGLE_SPOUT_SIGN_NGINX,msg.getBornHostString());
+                    processMsg4Region(accessLog);
+                }
             } else {
                 LOG.error("The first value in tuple should be MessageExt object");
             }
