@@ -77,6 +77,7 @@ public class NginxLogAggregationBolt implements IRichBolt, Constant {
         try {
             if ( msgObj instanceof MessageExt ) {
                 MessageExt msg = (MessageExt) msgObj;
+                RedisClient.getInstance().zaddByTimeStamp(EAGLE_SPOUT_SIGN_NGINX,msg.getBornHostString());
                 AccessLog accessLog = new AccessLog(new String(msg.getBody(), Charset.forName("UTF-8")));
                 processMsg4Region(accessLog);
             } else {
@@ -107,7 +108,6 @@ public class NginxLogAggregationBolt implements IRichBolt, Constant {
         if ( !accessLog.isFull() ) {
             return;
         }
-        RedisClient.getInstance().zaddByTimeStamp(EAGLE_SPOUT_SIGN_NGINX,accessLog.getUpstreamAddr());
         HashMap<String, HashMap<String, AggregationResult>> parserAggResultMap = atomicReferenceRegion.get();
         String offerId = accessLog.getOffId();
         String affiliateId = accessLog.getAffId();
