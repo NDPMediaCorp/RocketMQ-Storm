@@ -3,7 +3,7 @@ rocketmq.spout.topic=T_EAGLE_FLUME_NGINX
 rocketmq.spout.topic.tag=*
 
 topology.name=EAGLE_FLUME_EVENT
-topology.spout.parallel=3
+topology.spout.parallel=5
 topology.bolt.parallel=1
 
 topology.acker.executors=1
