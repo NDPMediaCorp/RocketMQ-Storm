@@ -133,6 +133,29 @@ public class RedisClient {
         return 0L;
     }
 
+    public Long zadd(String key, Map<String,Double> scoreValueMap, int expire) {
+
+        Jedis jedis = null;
+        try {
+            jedis = pool.getResource();
+            Long result = jedis.zadd(key,scoreValueMap);
+            if ( 0 != expire ) {
+                jedis.expire(key, expire);
+            }
+            return result;
+        } catch ( JedisConnectionException e ) {
+            LOG.error("RedisClient Error:", e);
+            if ( null != jedis ) {
+                pool.returnBrokenResource(jedis);
+                jedis = null;
+            }
+        } finally {
+            if ( null != jedis )
+                jedis.close();
+        }
+        return 0L;
+    }
+
     public Double zscore(String key, String value) {
 
         Jedis jedis = null;
@@ -220,27 +243,15 @@ public class RedisClient {
         return null;
     }
 
-    public Long sadd(String key, String... value) {
-        Long result = 0L;
-        Jedis jedis = null;
-        try {
-            jedis = pool.getResource();
-            result = jedis.sadd(key, value);
-        } catch ( JedisConnectionException e ) {
-            LOG.error("redis.sadd error:key=" + key + ",value=" + value, e);
-            if ( null != jedis ) {
-                pool.returnBrokenResource(jedis);
-                jedis = null;
-            }
-        } finally {
-            if ( null != jedis )
-                jedis.close();
+    public void zaddByTimeStamp(String key, Set<String> values) {
+        if ( values == null ){
+            return;
         }
-        return result;
-    }
-
-    public void zaddByTimeStamp(String key, String value) {
-        zadd(key, System.currentTimeMillis(), value, DAY * 30);
+        Map<String,Double> scoreValues = new HashMap<>();
+        for ( String value : values ) {
+            scoreValues.put(value, (double)System.currentTimeMillis());
+        }
+        zadd(key,scoreValues, DAY * 30);
     }
 
 }

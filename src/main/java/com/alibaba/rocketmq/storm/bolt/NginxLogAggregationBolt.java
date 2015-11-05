@@ -18,10 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -50,6 +47,8 @@ public class NginxLogAggregationBolt implements IRichBolt, Constant {
     /** ---------------------------offId_affId-----click/conv@region------Result------------ */
     private AtomicReference<HashMap<String, HashMap<String, AggregationResult>>> atomicReferenceRegion = new AtomicReference<>();
 
+    private AtomicReference<Set<String>> atomicReferenceClientHost = new AtomicReference<>();
+
     private AtomicLong counter = new AtomicLong(1L);
 
     private volatile boolean stop = false;
@@ -59,6 +58,9 @@ public class NginxLogAggregationBolt implements IRichBolt, Constant {
 
         HashMap<String, HashMap<String, AggregationResult>> mapRegion = new HashMap<>();
         while ( !atomicReferenceRegion.compareAndSet(null, mapRegion) ) {}
+
+        Set<String> clientHost = new HashSet<>();
+        while ( !atomicReferenceClientHost.compareAndSet(null, clientHost) ) {}
 
         Thread persistThread = new Thread(new PersistTask());
         persistThread.setName("PersistThread");
@@ -79,8 +81,8 @@ public class NginxLogAggregationBolt implements IRichBolt, Constant {
                 MessageExt msg = (MessageExt) msgObj;
                 AccessLog accessLog = new AccessLog(new String(msg.getBody(), Charset.forName("UTF-8")));
                 if ( accessLog.isFull() ) {
-                    RedisClient.getInstance().zaddByTimeStamp(EAGLE_SPOUT_SIGN_NGINX,msg.getBornHostString());
                     processMsg4Region(accessLog);
+                    recordClientHost(msg.getBornHostString());
                 }
             } else {
                 LOG.error("The first value in tuple should be MessageExt object");
@@ -104,6 +106,14 @@ public class NginxLogAggregationBolt implements IRichBolt, Constant {
 
     @Override public Map<String, Object> getComponentConfiguration() {
         return null;
+    }
+
+    public void recordClientHost(String host){
+        if ( host == null ){
+            return;
+        }
+        Set<String> clientHostList = atomicReferenceClientHost.get();
+        clientHostList.add(host);
     }
 
     public void processMsg4Region(AccessLog accessLog) {
