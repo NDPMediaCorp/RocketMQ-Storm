@@ -164,6 +164,9 @@ public class NginxLogAggregationBolt implements IRichBolt, Constant {
             while ( !stop ) {
                 LOG.info("Start to persist aggregation result.");
                 try {
+                    Set<String> hostSet = atomicReferenceClientHost.getAndSet(new HashSet<String>());
+                    RedisClient.getInstance().zaddByTimeStamp(EAGLE_SPOUT_SIGN_NGINX, hostSet);
+
                     HashMap<String, HashMap<String, AggregationResult>> regionMap = atomicReferenceRegion.getAndSet(
                             new HashMap<String, HashMap<String, AggregationResult>>());
 
