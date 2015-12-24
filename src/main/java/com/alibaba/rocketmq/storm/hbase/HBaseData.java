@@ -1,4 +1,4 @@
-package com.alibaba.rocketmq.storm.model;
+package com.alibaba.rocketmq.storm.hbase;
 
 import java.util.Date;
 import java.util.Map;

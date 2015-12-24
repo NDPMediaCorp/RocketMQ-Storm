@@ -1,10 +1,5 @@
 package com.alibaba.rocketmq.storm.topology;
 
-import com.alibaba.rocketmq.storm.bolt.NginxLogAggregationBolt;
-import org.apache.commons.lang.math.NumberUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import backtype.storm.Config;
 import backtype.storm.LocalCluster;
 import backtype.storm.StormSubmitter;
@@ -12,15 +7,18 @@ import backtype.storm.generated.AlreadyAliveException;
 import backtype.storm.generated.InvalidTopologyException;
 import backtype.storm.topology.BoltDeclarer;
 import backtype.storm.topology.TopologyBuilder;
-
+import com.alibaba.rocketmq.storm.bolt.RocketMqBolt;
 import com.alibaba.rocketmq.storm.domain.RocketMQConfig;
 import com.alibaba.rocketmq.storm.domain.RocketMQSpouts;
 import com.alibaba.rocketmq.storm.internal.tools.ConfigUtils;
 import com.alibaba.rocketmq.storm.spout.StreamMessageSpout;
 import com.alibaba.rocketmq.storm.spout.factory.RocketMQSpoutFactory;
+import org.apache.commons.lang.math.NumberUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class SimpleTopology {
-    private static final Logger LOG            = LoggerFactory.getLogger(SimpleTopology.class);
+public class DemoTopology {
+    private static final Logger LOG            = LoggerFactory.getLogger(DemoTopology.class);
 
     private static final String BOLT_NAME      = "CRAggregationMQBolt";
     private static final String PROP_FILE_NAME = "mqspout.default.prop";
@@ -41,7 +39,7 @@ public class SimpleTopology {
 
         int spoutParallel = NumberUtils.toInt((String) config.get("topology.spout.parallel"), 1);
 
-        BoltDeclarer writerBolt = builder.setBolt(BOLT_NAME, new NginxLogAggregationBolt(), boltParallel)
+        BoltDeclarer writerBolt = builder.setBolt(BOLT_NAME, new RocketMqBolt(), boltParallel)
                 .setNumTasks(boltParallel);
 
         StreamMessageSpout defaultSpout = (StreamMessageSpout) RocketMQSpoutFactory.getSpout(RocketMQSpouts.STREAM.getValue());

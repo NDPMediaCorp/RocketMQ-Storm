@@ -2,7 +2,6 @@ package com.alibaba.rocketmq.storm.hbase;
 
 import com.alibaba.rocketmq.storm.hbase.exception.HBaseDataInvalidException;
 import com.alibaba.rocketmq.storm.hbase.exception.HBasePersistenceException;
-import com.alibaba.rocketmq.storm.model.HBaseData;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;

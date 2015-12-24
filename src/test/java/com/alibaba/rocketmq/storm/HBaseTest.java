@@ -2,7 +2,7 @@ package com.alibaba.rocketmq.storm;
 
 import com.alibaba.rocketmq.storm.hbase.HBaseClient;
 import com.alibaba.rocketmq.storm.hbase.exception.HBasePersistenceException;
-import com.alibaba.rocketmq.storm.model.HBaseData;
+import com.alibaba.rocketmq.storm.hbase.HBaseData;
 import org.junit.Test;
 
 import java.util.Calendar;

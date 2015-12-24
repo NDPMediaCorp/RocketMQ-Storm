@@ -1,104 +1,47 @@
-# rocketmq-storm [![Build Status](https://travis-ci.org/rocketmq/rocketmq-storm.svg?branch=master)](https://travis-ci.org/rocketmq/rocketmq-storm)
+rocketmq-storm.jar
 
-## Description
+DemoTopology see test/java/com.alibaba.rocketmq.storm.topology.DemoTopology
 
-rocketmq-storm allows a Storm topology to consume an RocketMQ queue as an input source. It currently provides:
+kafka.config.properties:
+kafka.broker.list=10.1.15.41:9092,10.1.15.40:9092
+kafka.serializer.class=kafka.serializer.StringEncoder
+kafka.key.serializer.class=kafka.serializer.StringEncoder
+kafka.producer.type=sync
+kafka.topic=yeahmobi_vncc_lbs
+。。。
 
-#### SimpleMessageSpout: 
-An simple implementation of backtype.storm.topology.IRichSpout,consumes the messages one by one.full features spout implementation exception flow control function.
+redis.config.properties:
+#最大能够保持idle状态的对象数
+redis.pool.maxIdle=200
+#当池内没有返回对象时，最大等待时间
+redis.pool.maxWait=1000
+#当调用borrow Object方法时，是否进行有效性检查
+redis.pool.testOnBorrow=true
+#当调用return Object方法时，是否进行有效性检查
+redis.pool.testOnReturn=true
+#IP
+redis.ip=eager.t8cuil.0001.use1.cache.amazonaws.com
+#redis.ip=172.30.30.9
+#Port
+redis.port=6379
+redis.pool.minIdle=20
+redis.pool.maxTotal=500
 
-#### BatchMessageSpout: 
-As the name implies,It handle the messages in a batch way,also with supporting reliable messages.
-
-#### StreamMessageSpout: 
-Based on batchMessageSpout,cache batch messages and emit message one by one.It is also recommendation spout at the present stage.
-
-#### RocketMQTridentSpout: 
-Based on latest trident api,but not compatible with jstorm now.
-
-## Documentation
-Please look forward to!
-
-## Code Snippet,see [here](https://github.com/rocketmq/rocketmq-storm-alibaba/blob/master/src/main/java/com/alibaba/rocketmq/storm/topology/SimpleTopology.java)
-
-#### 
-    private static final String BOLT_NAME      = "notifier";
-    private static final String PROP_FILE_NAME = "mqspout.test.prop";
-
-    private static Config       conf           = new Config();
-    private static boolean      isLocalMode    = true;
-
-    public static void main(String[] args) throws Exception {
-        TopologyBuilder builder = buildTopology(ConfigUtils.init(PROP_FILE_NAME));
-
-        submitTopology(builder);
-    }
-
-    private static TopologyBuilder buildTopology(Config config) throws Exception {
-        TopologyBuilder builder = new TopologyBuilder();
-
-        int boltParallel = NumberUtils.toInt((String) config.get("topology.bolt.parallel"), 1);
-
-        int spoutParallel = NumberUtils.toInt((String) config.get("topology.spout.parallel"), 1);
-
-        BoltDeclarer writerBolt = builder.setBolt(BOLT_NAME, new RocketMqBolt(), boltParallel);
-
-        StreamMessageSpout defaultSpout = (StreamMessageSpout) RocketMQSpoutFactory
-                .getSpout(Spouts.STREAM.getValue());
-        RocketMQConfig mqConig = (RocketMQConfig) config.get(ConfigUtils.CONFIG_ROCKETMQ);
-        defaultSpout.setConfig(mqConig);
-
-        String id = (String) config.get(ConfigUtils.CONFIG_TOPIC);
-        builder.setSpout(id, defaultSpout, spoutParallel);
-
-        writerBolt.shuffleGrouping(id);
-        return builder;
-    }
-
-    private static void submitTopology(TopologyBuilder builder) {
-        try {
-            String topologyName = String.valueOf(conf.get("topology.name"));
-            StormTopology topology = builder.createTopology();
-
-            if (isLocalMode == true) {
-                LocalCluster cluster = new LocalCluster();
-                conf.put(Config.STORM_CLUSTER_MODE, "local");
-
-                cluster.submitTopology(topologyName, conf, topology);
-
-                Thread.sleep(50000);
-
-                cluster.killTopology(topologyName);
-                cluster.shutdown();
-            } else {
-                conf.put(Config.STORM_CLUSTER_MODE, "distributed");
-                StormSubmitter.submitTopology(topologyName, conf, topology);
-            }
-
-        } catch (AlreadyAliveException e) {
-            LOG.error(e.getMessage(), e.getCause());
-        } catch (InvalidTopologyException e) {
-            LOG.error(e.getMessage(), e.getCause());
-        } catch (Exception e) {
-            LOG.error(e.getMessage(), e.getCause());
-        }
-    } 
-
-
-## How to upload task jar
-To produce a jar:
-
-$ mvn clean install
-
-
-Run it
-
-$cd target && storm jar rocketmq-storm-1.0.0-SNAPSHOT-jar-with-dependencies.jar com.alibaba.rocketmq.storm.topology.SimpleTopology
-
-
-## Compatibility
-#### RocketMQ 3.x
-
-#### Jstorm 0.9.X
-
-#### Storm 0.9.x
+storm.config.properties:
+rocketmq.spout.consumer.group=CG_EAGLE_FLUME_NGINX
+rocketmq.spout.topic=T_EAGLE_FLUME_NGINX
+rocketmq.spout.topic.tag=*
+topology.name=EAGLE_FLUME_EVENT
+topology.spout.parallel=5
+topology.bolt.parallel=1
+topology.acker.executors=1
+topology.workers=1
+topology.max.spout.pending=100
+topology.message.timeout.secs=60
+topology.jvm=-Duser.timezone=UTC -Xms1g -Xmx1g
+rocketmq.spout.ordered=false
+rocketmq.enable_ssl=true
+rocketmq.client.pwd=4R4MNv54OnDeoHSRnngFkA==
+#rocketmq.namesrv.domain=54.169.203.57
+# version 1.3
+rocketmq.log.home=/dianyi/app/logs

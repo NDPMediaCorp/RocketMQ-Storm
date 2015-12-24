@@ -13,6 +13,10 @@
 		<level value="WARN" />
 		<appender-ref ref="DEFAULT" />
 	</logger>
+    <logger name="com.alibaba.rocketmq.storm" additivity="false">
+        <level value="INFO" />
+        <appender-ref ref="DEFAULT" />
+    </logger>
 	<logger name="com.alibaba" additivity="false">
 		<level value="INFO" />
 		<appender-ref ref="DEFAULT" />
