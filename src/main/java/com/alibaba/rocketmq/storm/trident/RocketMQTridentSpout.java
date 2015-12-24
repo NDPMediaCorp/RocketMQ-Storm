@@ -114,33 +114,42 @@ public class RocketMQTridentSpout implements
             return partition;
         }
 
+        /**
+         * Emit a batch of tuples for a partition/transaction that's never been emitted before.
+         * Return the metadata that can be used to reconstruct this partition/batch in the future.
+         */
         @Override
         public BatchMessage emitPartitionBatchNew(TransactionAttempt tx,
                                                   TridentCollector collector,
                                                   ISpoutPartition partition,
                                                   BatchMessage lastPartitionMeta) {
             long index = 0;
+            long pullBatchSize = 0;
             BatchMessage batchMessages = null;
             MessageQueue mq = null;
             try {
+                mq = getMessageQueue(config.getTopic()).get(Integer.parseInt(partition.getId()));
                 if (lastPartitionMeta == null) {
                     index = consumer.getConsumer().fetchConsumeOffset(mq, true);
                     index = index == -1 ? 0 : index;
+                    long maxOffset = consumer.getConsumer().maxOffset(mq);
+                    long diff = maxOffset - index;
+                    pullBatchSize = diff > config.getPullBatchSize() ? config.getPullBatchSize() : diff;
                 } else {
-                    index = lastPartitionMeta.getNextOffset();
+                    index = lastPartitionMeta.getOffset();
+                    pullBatchSize = (int)(lastPartitionMeta.getNextOffset() - index - 1);
                 }
 
-                mq = getMessageQueue(config.getTopic()).get(Integer.parseInt(partition.getId()));
-
-                PullResult result = consumer.getConsumer().pullBlockIfNotFound(mq,
-                        config.getTopicTag(), index, config.getPullBatchSize());
+                PullResult result = consumer.getConsumer()
+                        .pullBlockIfNotFound(mq, config.getTopicTag(), index, (int)pullBatchSize);
                 List<MessageExt> msgs = result.getMsgFoundList();
                 if (null != msgs && msgs.size() > 0) {
                     batchMessages = new BatchMessage(msgs, mq);
-                    consumer.getConsumer().updateConsumeOffset(mq, result.getMaxOffset());
                     for (MessageExt msg : msgs) {
                         collector.emit(Lists.newArrayList(tx, msg));
                     }
+                    consumer.getConsumer().updateConsumeOffset(mq, result.getMaxOffset());
+                    assert result.getMaxOffset() == batchMessages.getNextOffset() - 1;
                 }
             } catch (MQClientException | RemotingException | MQBrokerException
                     | InterruptedException e) {
@@ -154,20 +163,23 @@ public class RocketMQTridentSpout implements
 
         }
 
+        /**
+         * Emit a batch of tuples for a partition/transaction that has been emitted before, using
+         * the metadata created when it was first emitted.
+         */
         @Override
-        public void emitPartitionBatch(TransactionAttempt tx, TridentCollector collector,
-                                       ISpoutPartition partition, BatchMessage partitionMeta) {
-
-            MessageQueue mq = null;
+        public void emitPartitionBatch(TransactionAttempt tx,
+                                       TridentCollector collector,
+                                       ISpoutPartition partition,
+                                       BatchMessage partitionMeta) {
             try {
-                mq = getMessageQueue(config.getTopic()).get(Integer.parseInt(partition.getId()));
-
+                MessageQueue mq = getMessageQueue(config.getTopic()).get(Integer.parseInt(partition.getId()));
                 PullResult result = consumer.getConsumer().pullBlockIfNotFound(mq,
                         config.getTopicTag(), partitionMeta.getOffset(),
                         partitionMeta.getMsgList().size());
                 List<MessageExt> msgs = result.getMsgFoundList();
                 if (null != msgs && msgs.size() > 0) {
-                    consumer.getConsumer().updateConsumeOffset(mq, partitionMeta.getNextOffset());
+                    consumer.getConsumer().updateConsumeOffset(mq, partitionMeta.getNextOffset() - 1);
                     for (MessageExt msg : msgs) {
                         collector.emit(Lists.newArrayList(tx, msg));
                     }
