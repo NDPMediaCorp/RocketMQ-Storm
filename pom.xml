@@ -205,10 +205,15 @@
             <plugin>
                 <artifactId>maven-source-plugin</artifactId>
                 <version>2.2.1</version>
+                <configuration>
+                    <attach>true</attach>
+                </configuration>
                 <executions>
                     <execution>
-                        <id>attach-sources</id>
-                        <phase>deploy</phase>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>
