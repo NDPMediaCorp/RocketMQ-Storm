@@ -6,6 +6,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentMap;
 
+import com.alibaba.rocketmq.client.consumer.MQPullConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,30 +38,37 @@ public class RocketMQTridentSpout implements
 
     private static final long                                      serialVersionUID   = 8972193358178718167L;
 
-    private static final Logger                                    LOG                = LoggerFactory
-                                                                                              .getLogger(RocketMQTridentSpout.class);
+    private static final Logger                                    LOG                = LoggerFactory.getLogger(RocketMQTridentSpout.class);
 
-    private static final ConcurrentMap<String, List<MessageQueue>> cachedMessageQueue = new MapMaker()
-                                                                                              .makeMap();
-    private RocketMQConfig                                         config;
-    private DefaultMQPullConsumer                                  consumer;
+    private static final ConcurrentMap<String, List<MessageQueue>> cachedMessageQueue = new MapMaker().makeMap();
+    private RocketMQConfig config;
+    private volatile transient DefaultMQPullConsumer                                  consumer;
 
     public RocketMQTridentSpout() {
     }
 
+    private MQPullConsumer getConsumer() throws MQClientException {
+        if (null == consumer) {
+            synchronized (this) {
+                if (null == consumer) {
+                    consumer = (DefaultMQPullConsumer) MessageConsumerManager.getConsumerInstance(config, null, false);
+                    consumer.setInstanceName(UUID.randomUUID().toString());
+                    consumer.start();
+                }
+            }
+        }
+        return consumer;
+    }
+
     public RocketMQTridentSpout(RocketMQConfig config) throws MQClientException {
         this.config = config;
-        consumer = (DefaultMQPullConsumer) MessageConsumerManager.getConsumerInstance(config, null,
-                false);
-        consumer.setInstanceName(UUID.randomUUID().toString());
-        consumer.start();
     }
 
     private List<MessageQueue> getMessageQueue(String topic) throws MQClientException {
         List<MessageQueue> cachedQueue = Lists.newArrayList();
         cachedQueue = cachedMessageQueue.get(config.getTopic());
         if (cachedQueue == null) {
-            Set<MessageQueue> mqs = consumer.fetchSubscribeMessageQueues(config.getTopic());
+            Set<MessageQueue> mqs = getConsumer().fetchSubscribeMessageQueues(config.getTopic());
             cachedQueue = Lists.newArrayList(mqs);
             cachedMessageQueue.put(config.getTopic(), cachedQueue);
         }
@@ -124,9 +132,9 @@ public class RocketMQTridentSpout implements
             try {
                 mq = getMessageQueue(config.getTopic()).get(Integer.parseInt(partition.getId()));
                 if (lastPartitionMeta == null) {
-                    index = consumer.fetchConsumeOffset(mq, true);
+                    index = getConsumer().fetchConsumeOffset(mq, true);
                     index = index == -1 ? 0 : index;
-                    long maxOffset = consumer.maxOffset(mq);
+                    long maxOffset = getConsumer().maxOffset(mq);
                     long diff = maxOffset - index;
                     pullBatchSize = diff > config.getPullBatchSize() ? config.getPullBatchSize() : diff;
                 } else {
@@ -134,7 +142,7 @@ public class RocketMQTridentSpout implements
                     pullBatchSize = (int)(lastPartitionMeta.getNextOffset() - index - 1);
                 }
 
-                PullResult result = consumer.pullBlockIfNotFound(mq, config.getTopicTag(), index,
+                PullResult result = getConsumer().pullBlockIfNotFound(mq, config.getTopicTag(), index,
                         (int)pullBatchSize);
                 List<MessageExt> msgs = result.getMsgFoundList();
                 if (null != msgs && msgs.size() > 0) {
@@ -142,7 +150,7 @@ public class RocketMQTridentSpout implements
                     for (MessageExt msg : msgs) {
                         collector.emit(Lists.newArrayList(tx, msg));
                     }
-                    consumer.updateConsumeOffset(mq, result.getMaxOffset());
+                    getConsumer().updateConsumeOffset(mq, result.getMaxOffset());
                     assert result.getMaxOffset() == batchMessages.getNextOffset() - 1;
                 }
             } catch (MQClientException | RemotingException | MQBrokerException
@@ -167,11 +175,11 @@ public class RocketMQTridentSpout implements
 
             try {
                 MessageQueue mq = getMessageQueue(config.getTopic()).get(Integer.parseInt(partition.getId()));
-                PullResult result = consumer.pullBlockIfNotFound(mq, config.getTopicTag(),
+                PullResult result = getConsumer().pullBlockIfNotFound(mq, config.getTopicTag(),
                         partitionMeta.getOffset(), partitionMeta.getMsgList().size());
                 List<MessageExt> msgs = result.getMsgFoundList();
                 if (null != msgs && msgs.size() > 0) {
-                    consumer.updateConsumeOffset(mq, partitionMeta.getNextOffset());
+                    getConsumer().updateConsumeOffset(mq, partitionMeta.getNextOffset());
                     for (MessageExt msg : msgs) {
                         collector.emit(Lists.newArrayList(tx, msg));
                     }
