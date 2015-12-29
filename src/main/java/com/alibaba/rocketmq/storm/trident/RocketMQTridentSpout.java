@@ -125,23 +125,16 @@ public class RocketMQTridentSpout implements
                                                   TridentCollector collector,
                                                   ISpoutPartition partition,
                                                   BatchMessage lastPartitionMeta) {
-            long index = 0;
-            long pullBatchSize = 0;
             BatchMessage batchMessages = null;
-            MessageQueue mq = null;
             try {
-                mq = getMessageQueue(config.getTopic()).get(Integer.parseInt(partition.getId()));
-                if (lastPartitionMeta == null) {
-                    index = getConsumer().fetchConsumeOffset(mq, true);
-                    index = index == -1 ? 0 : index;
-                    long maxOffset = getConsumer().maxOffset(mq);
-                    long diff = maxOffset - index;
-                    pullBatchSize = diff > config.getPullBatchSize() ? config.getPullBatchSize() : diff;
-                } else {
-                    index = lastPartitionMeta.getOffset();
-                    pullBatchSize = (int)(lastPartitionMeta.getNextOffset() - index - 1);
+                MessageQueue mq = getMessageQueue(config.getTopic()).get(Integer.parseInt(partition.getId()));
+                long index = getConsumer().fetchConsumeOffset(mq, true);
+                if (index < 0) {
+                    index = 0;
                 }
-
+                long maxOffset = getConsumer().maxOffset(mq);
+                long diff = maxOffset - index;
+                long pullBatchSize = diff > config.getPullBatchSize() ? config.getPullBatchSize() : diff;
                 PullResult result = getConsumer().pullBlockIfNotFound(mq, config.getTopicTag(), index,
                         (int)pullBatchSize);
                 List<MessageExt> msgs = result.getMsgFoundList();
