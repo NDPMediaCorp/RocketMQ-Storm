@@ -132,12 +132,28 @@ public class RocketMQTridentSpout implements
                 if (index < 0) {
                     index = 0;
                 }
-                long maxOffset = getConsumer().maxOffset(mq);
-                long diff = maxOffset - index;
-                long pullBatchSize = diff > config.getPullBatchSize() ? config.getPullBatchSize() : diff;
                 PullResult result = getConsumer().pullBlockIfNotFound(mq, config.getTopicTag(), index,
-                        (int)pullBatchSize);
+                        config.getPullBatchSize());
                 List<MessageExt> msgs = result.getMsgFoundList();
+
+                // Filter message by tag.
+                if (null != config.getTopicTag() && !"*".equals(config.getTopicTag())) {
+                    String[] tags = config.getTopicTag().split("\\|\\|");
+                    List<MessageExt> filteredMsgs = Lists.newArrayList();
+                    if (null != msgs && !msgs.isEmpty()) {
+                        for (MessageExt msg : msgs) {
+                            for (String tag : tags) {
+                                if (tag.equals(msg.getTags())) {
+                                    filteredMsgs.add(msg);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    msgs = filteredMsgs;
+                }
+
+
                 if (null != msgs && msgs.size() > 0) {
                     batchMessages = new BatchMessage(msgs, mq);
                     for (MessageExt msg : msgs) {
