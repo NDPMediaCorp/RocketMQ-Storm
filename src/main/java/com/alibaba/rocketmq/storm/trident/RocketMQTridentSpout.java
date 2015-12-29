@@ -65,12 +65,12 @@ public class RocketMQTridentSpout implements
     }
 
     private List<MessageQueue> getMessageQueue(String topic) throws MQClientException {
-        List<MessageQueue> cachedQueue = Lists.newArrayList();
-        cachedQueue = cachedMessageQueue.get(config.getTopic());
+        List<MessageQueue> cachedQueue = cachedMessageQueue.get(topic);
         if (cachedQueue == null) {
-            Set<MessageQueue> mqs = getConsumer().fetchSubscribeMessageQueues(config.getTopic());
+            // Fetches all message queues from name server.
+            Set<MessageQueue> mqs = getConsumer().fetchSubscribeMessageQueues(topic);
             cachedQueue = Lists.newArrayList(mqs);
-            cachedMessageQueue.put(config.getTopic(), cachedQueue);
+            cachedMessageQueue.put(topic, cachedQueue);
         }
         return cachedQueue;
     }
@@ -89,7 +89,7 @@ public class RocketMQTridentSpout implements
         }
 
         @Override
-        public boolean isReady(long txid) {
+        public boolean isReady(long txId) {
             return true;
         }
 
@@ -170,8 +170,10 @@ public class RocketMQTridentSpout implements
          * the metadata created when it was first emitted.
          */
         @Override
-        public void emitPartitionBatch(TransactionAttempt tx, TridentCollector collector,
-                                       ISpoutPartition partition, BatchMessage partitionMeta) {
+        public void emitPartitionBatch(TransactionAttempt tx,
+                                       TridentCollector collector,
+                                       ISpoutPartition partition,
+                                       BatchMessage partitionMeta) {
 
             try {
                 MessageQueue mq = getMessageQueue(config.getTopic()).get(Integer.parseInt(partition.getId()));
