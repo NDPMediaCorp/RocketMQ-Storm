@@ -145,6 +145,8 @@ public class RocketMQTridentSpout implements
 
                     if (null != msgs && msgs.size() > 0) {
                         batchMessages = new BatchMessage(msgs, mq);
+                        batchMessages.setOffset(result.getMinOffset());
+                        batchMessages.setNextOffset(result.getNextBeginOffset());
                         for (MessageExt msg : msgs) {
                             collector.emit(Lists.newArrayList(tx, msg));
                         }
@@ -190,10 +192,17 @@ public class RocketMQTridentSpout implements
                                                   BatchMessage lastPartitionMeta) {
             try {
                 MessageQueue mq = getMessageQueue(config.getTopic()).get(Integer.parseInt(partition.getId()));
-                long index = getConsumer().fetchConsumeOffset(mq, true);
-                if (index < 0) {
-                    index = 0;
+
+                long index = 0;
+                if (null == lastPartitionMeta) {
+                    index = getConsumer().fetchConsumeOffset(mq, true);
+                    if (index < 0) {
+                        index = 0;
+                    }
+                } else {
+                    index = lastPartitionMeta.getNextOffset();
                 }
+
                 PullResult result = getConsumer().pull(mq, config.getTopicTag(), index, config.getPullBatchSize());
                 return handlePullResult(tx, collector, result, mq, lastPartitionMeta);
             } catch (MQClientException | RemotingException | MQBrokerException | InterruptedException e) {
@@ -219,8 +228,8 @@ public class RocketMQTridentSpout implements
 
             try {
                 MessageQueue mq = getMessageQueue(config.getTopic()).get(Integer.parseInt(partition.getId()));
-                PullResult result = getConsumer().pull(mq, config.getTopicTag(), partitionMeta.getOffset(),
-                        partitionMeta.getMsgList().size());
+                int batchSize = (int)(partitionMeta.getNextOffset() - partitionMeta.getOffset());
+                PullResult result = getConsumer().pull(mq, config.getTopicTag(), partitionMeta.getOffset(), batchSize);
                 BatchMessage batchMessage = handlePullResult(tx, collector, result, mq, partitionMeta);
                 if (batchMessage == partitionMeta) {
                     throw new RuntimeException("Pull failed, refer to log for details.");

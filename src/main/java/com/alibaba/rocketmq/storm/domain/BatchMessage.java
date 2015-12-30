@@ -39,31 +39,6 @@ public class BatchMessage {
         this.batchId = UUID.randomUUID();
         this.latch = new CountDownLatch(1);
         this.isSuccess = false;
-
-        offset = getMinOffset(msgList);
-        nextOffset = getMaxOffset(msgList) + 1;
-    }
-
-    private long getMinOffset(List<MessageExt> msgs) {
-        long minOffset = Long.MAX_VALUE;
-        for (MessageExt msg : msgs) {
-            if (msg.getQueueOffset() < minOffset) {
-                minOffset = msg.getQueueOffset();
-            }
-        }
-
-        return minOffset;
-    }
-
-    private long getMaxOffset(List<MessageExt> msgs) {
-        long maxOffset = Long.MIN_VALUE;
-        for (MessageExt msg : msgs) {
-            if (msg.getQueueOffset() > maxOffset) {
-                maxOffset = msg.getQueueOffset();
-            }
-        }
-
-        return maxOffset;
     }
 
     public UUID getBatchId() {
