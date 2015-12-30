@@ -116,6 +116,69 @@ public class RocketMQTridentSpout implements
             return partition;
         }
 
+        private BatchMessage handlePullResult(TransactionAttempt tx,
+                                              TridentCollector collector,
+                                              PullResult result,
+                                              MessageQueue mq,
+                                              BatchMessage lastPartitionMeta)
+                throws MQClientException {
+            switch (result.getPullStatus()) {
+                case FOUND:
+                    BatchMessage batchMessages = null;
+                    List<MessageExt> msgs = result.getMsgFoundList();
+                    // Filter message by tag.
+                    if (null != config.getTopicTag() && !"*".equals(config.getTopicTag())) {
+                        String[] tags = config.getTopicTag().split("\\|\\|");
+                        List<MessageExt> filteredMsgs = Lists.newArrayList();
+                        if (null != msgs && !msgs.isEmpty()) {
+                            for (MessageExt msg : msgs) {
+                                for (String tag : tags) {
+                                    if (tag.equals(msg.getTags())) {
+                                        filteredMsgs.add(msg);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        msgs = filteredMsgs;
+                    }
+
+                    if (null != msgs && msgs.size() > 0) {
+                        batchMessages = new BatchMessage(msgs, mq);
+                        for (MessageExt msg : msgs) {
+                            collector.emit(Lists.newArrayList(tx, msg));
+                        }
+                        getConsumer().updateConsumeOffset(mq, result.getMaxOffset());
+                        assert result.getMaxOffset() == batchMessages.getNextOffset() - 1;
+                    }
+                    return batchMessages;
+
+                case NO_NEW_MSG:
+                    LOG.debug("No new messages for this pull request.");
+                    return lastPartitionMeta;
+
+                case NO_MATCHED_MSG:
+                    LOG.debug("No matched messages for this pull request");
+                    return lastPartitionMeta;
+
+                case OFFSET_ILLEGAL:
+                    LOG.error("Offset illegal, please notify RocketMQ Development Team");
+                    return lastPartitionMeta;
+
+                case SLAVE_LAG_BEHIND:
+                    LOG.warn("Master node is down and slave replication is lagged behind.");
+                    return lastPartitionMeta;
+
+                case SUBSCRIPTION_NOT_LATEST:
+                    LOG.error("Subscription is not latest, please notify RocketMQ Development Team");
+                    return lastPartitionMeta;
+
+                default:
+                    LOG.error("Unexpected execution, please notify RocketMQ Development Team");
+                    return lastPartitionMeta;
+            }
+        }
+
         /**
          * Emit a batch of tuples for a partition/transaction that's never been emitted before.
          * Return the metadata that can be used to reconstruct this partition/batch in the future.
@@ -125,48 +188,18 @@ public class RocketMQTridentSpout implements
                                                   TridentCollector collector,
                                                   ISpoutPartition partition,
                                                   BatchMessage lastPartitionMeta) {
-            BatchMessage batchMessages = null;
             try {
                 MessageQueue mq = getMessageQueue(config.getTopic()).get(Integer.parseInt(partition.getId()));
                 long index = getConsumer().fetchConsumeOffset(mq, true);
                 if (index < 0) {
                     index = 0;
                 }
-                PullResult result = getConsumer().pullBlockIfNotFound(mq, config.getTopicTag(), index,
-                        config.getPullBatchSize());
-                List<MessageExt> msgs = result.getMsgFoundList();
-
-                // Filter message by tag.
-                if (null != config.getTopicTag() && !"*".equals(config.getTopicTag())) {
-                    String[] tags = config.getTopicTag().split("\\|\\|");
-                    List<MessageExt> filteredMsgs = Lists.newArrayList();
-                    if (null != msgs && !msgs.isEmpty()) {
-                        for (MessageExt msg : msgs) {
-                            for (String tag : tags) {
-                                if (tag.equals(msg.getTags())) {
-                                    filteredMsgs.add(msg);
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    msgs = filteredMsgs;
-                }
-
-
-                if (null != msgs && msgs.size() > 0) {
-                    batchMessages = new BatchMessage(msgs, mq);
-                    for (MessageExt msg : msgs) {
-                        collector.emit(Lists.newArrayList(tx, msg));
-                    }
-                    getConsumer().updateConsumeOffset(mq, result.getMaxOffset());
-                    assert result.getMaxOffset() == batchMessages.getNextOffset() - 1;
-                }
-            } catch (MQClientException | RemotingException | MQBrokerException
-                    | InterruptedException e) {
-                e.printStackTrace();
+                PullResult result = getConsumer().pull(mq, config.getTopicTag(), index, config.getPullBatchSize());
+                return handlePullResult(tx, collector, result, mq, lastPartitionMeta);
+            } catch (MQClientException | RemotingException | MQBrokerException | InterruptedException e) {
+                LOG.error("Pull Failed.", e);
+                return lastPartitionMeta;
             }
-            return batchMessages;
         }
 
         @Override
@@ -186,19 +219,16 @@ public class RocketMQTridentSpout implements
 
             try {
                 MessageQueue mq = getMessageQueue(config.getTopic()).get(Integer.parseInt(partition.getId()));
-                PullResult result = getConsumer().pullBlockIfNotFound(mq, config.getTopicTag(),
-                        partitionMeta.getOffset(), partitionMeta.getMsgList().size());
-                List<MessageExt> msgs = result.getMsgFoundList();
-                if (null != msgs && msgs.size() > 0) {
-                    getConsumer().updateConsumeOffset(mq, partitionMeta.getNextOffset());
-                    for (MessageExt msg : msgs) {
-                        collector.emit(Lists.newArrayList(tx, msg));
-                    }
+                PullResult result = getConsumer().pull(mq, config.getTopicTag(), partitionMeta.getOffset(),
+                        partitionMeta.getMsgList().size());
+                BatchMessage batchMessage = handlePullResult(tx, collector, result, mq, partitionMeta);
+                if (batchMessage == partitionMeta) {
+                    throw new RuntimeException("Pull failed, refer to log for details.");
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                LOG.error("Pull failed", e);
+                throw new RuntimeException("Pull failed, refer to log file for details.", e);
             }
-
         }
 
         @Override
