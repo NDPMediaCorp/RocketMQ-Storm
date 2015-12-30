@@ -6,8 +6,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentMap;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
 import com.alibaba.rocketmq.client.consumer.MQPullConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,9 +49,9 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
     }
 
     private MQPullConsumer getConsumer() throws MQClientException {
-        if ( null == consumer ) {
-            synchronized ( this ) {
-                if ( null == consumer ) {
+        if (null == consumer) {
+            synchronized (this) {
+                if (null == consumer) {
                     consumer = (DefaultMQPullConsumer) MessageConsumerManager.getConsumerInstance(config, null, false);
                     consumer.setInstanceName(UUID.randomUUID().toString());
                     consumer.start();
@@ -69,13 +67,12 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
 
     private List<MessageQueue> getMessageQueue(String topic) throws MQClientException {
         List<MessageQueue> cachedQueue = cachedMessageQueue.get(topic);
-        if ( cachedQueue == null ) {
+        if (cachedQueue == null) {
             // Fetches all message queues from name server.
             Set<MessageQueue> mqs = getConsumer().fetchSubscribeMessageQueues(topic);
             cachedQueue = Lists.newArrayList(mqs);
             cachedMessageQueue.put(topic, cachedQueue);
         }
-        LOG.debug("messageQueue={}", JSONObject.toJSON(cachedQueue));
         return cachedQueue;
     }
 
@@ -83,13 +80,21 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
 
         @Override
         public List<MessageQueue> getPartitionsForBatch() {
-            List<MessageQueue> queue = Lists.newArrayList();
+            List<MessageQueue> messageQueues = Lists.newArrayList();
             try {
-                queue = getMessageQueue(config.getTopic());
-            } catch ( Exception e ) {
-                e.printStackTrace();
+                messageQueues = getMessageQueue(config.getTopic());
+
+                // Debug info
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("RocketMQCoordinator#getPartitionsForBatch");
+                    for (MessageQueue messageQueue : messageQueues) {
+                        LOG.debug("Message Queue: {}", messageQueue);
+                    }
+                }
+            } catch (Exception e) {
+                LOG.error("Failed to fetch message queues", e);
             }
-            return queue;
+            return messageQueues;
         }
 
         @Override
@@ -108,10 +113,13 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
 
         @Override
         public List<ISpoutPartition> getOrderedPartitions(List<MessageQueue> allPartitionInfo) {
-            List<ISpoutPartition> partition = Lists.newArrayList();
-            for ( final MessageQueue queue : allPartitionInfo ) {
-                partition.add(new ISpoutPartition() {
 
+            final String signature = getClass().getName() + "#getOrderedPartitions";
+            LOG.debug("Enter: {}, Params: {}", signature, allPartitionInfo);
+
+            List<ISpoutPartition> partition = Lists.newArrayList();
+            for (final MessageQueue queue : allPartitionInfo) {
+                partition.add(new ISpoutPartition() {
                     @Override
                     public String getId() {
                         return String.valueOf(queue.getQueueId());
@@ -121,64 +129,69 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
             return partition;
         }
 
-        private BatchMessage handlePullResult(TransactionAttempt tx, TridentCollector collector, PullResult result, MessageQueue mq,
-                BatchMessage lastPartitionMeta) throws MQClientException {
-            switch ( result.getPullStatus() ) {
-            case FOUND:
-                BatchMessage batchMessages = null;
-                List<MessageExt> msgs = result.getMsgFoundList();
-                // Filter message by tag.
-                if ( null != config.getTopicTag() && !"*".equals(config.getTopicTag()) ) {
-                    String[] tags = config.getTopicTag().split("\\|\\|");
-                    List<MessageExt> filteredMsgs = Lists.newArrayList();
-                    if ( null != msgs && !msgs.isEmpty() ) {
-                        for ( MessageExt msg : msgs ) {
-                            for ( String tag : tags ) {
-                                if ( tag.equals(msg.getTags()) ) {
-                                    filteredMsgs.add(msg);
-                                    break;
+        private BatchMessage handlePullResult(TransactionAttempt tx, TridentCollector collector, PullResult result,
+                                              MessageQueue mq, BatchMessage lastPartitionMeta)
+                throws MQClientException {
+            final String signature = getClass().getName() + "#handlePullResult";
+            LOG.debug("Enter {}", signature);
+            LOG.debug("PullResult status: {}", result.getPullStatus().name());
+            switch (result.getPullStatus()) {
+                case FOUND:
+                    BatchMessage batchMessages = null;
+                    List<MessageExt> msgs = result.getMsgFoundList();
+                    LOG.debug("MessageFoundList size: {}", msgs.size());
+                    // Filter message by tag.
+                    if (null != config.getTopicTag() && !"*".equals(config.getTopicTag())) {
+                        String[] tags = config.getTopicTag().split("\\|\\|");
+                        List<MessageExt> filteredMsgs = Lists.newArrayList();
+                        if (null != msgs && !msgs.isEmpty()) {
+                            for (MessageExt msg : msgs) {
+                                for (String tag : tags) {
+                                    if (tag.equals(msg.getTags())) {
+                                        filteredMsgs.add(msg);
+                                        break;
+                                    }
                                 }
                             }
                         }
+                        msgs = filteredMsgs;
                     }
-                    msgs = filteredMsgs;
-                }
 
-                if ( null != msgs && msgs.size() > 0 ) {
-                    batchMessages = new BatchMessage(msgs, mq);
-                    batchMessages.setOffset(result.getMinOffset());
-                    batchMessages.setNextOffset(result.getNextBeginOffset());
-                    for ( MessageExt msg : msgs ) {
-                        collector.emit(Lists.newArrayList(tx, msg));
+                    if (null != msgs && msgs.size() > 0) {
+                        batchMessages = new BatchMessage(msgs, mq);
+                        batchMessages.setOffset(result.getMinOffset());
+                        batchMessages.setNextOffset(result.getNextBeginOffset());
+                        for (MessageExt msg : msgs) {
+                            collector.emit(Lists.newArrayList(tx, msg));
+                        }
+                        getConsumer().updateConsumeOffset(mq, result.getMaxOffset());
+                        assert result.getMaxOffset() == batchMessages.getNextOffset() - 1;
                     }
-                    getConsumer().updateConsumeOffset(mq, result.getMaxOffset());
-                    assert result.getMaxOffset() == batchMessages.getNextOffset() - 1;
-                }
-                return batchMessages;
+                    return batchMessages;
 
-            case NO_NEW_MSG:
-                LOG.debug("No new messages for this pull request.");
-                return lastPartitionMeta;
+                case NO_NEW_MSG:
+                    LOG.debug("No new messages for this pull request.");
+                    return lastPartitionMeta;
 
-            case NO_MATCHED_MSG:
-                LOG.debug("No matched messages for this pull request");
-                return lastPartitionMeta;
+                case NO_MATCHED_MSG:
+                    LOG.debug("No matched messages for this pull request");
+                    return lastPartitionMeta;
 
-            case OFFSET_ILLEGAL:
-                LOG.error("Offset illegal, please notify RocketMQ Development Team");
-                return lastPartitionMeta;
+                case OFFSET_ILLEGAL:
+                    LOG.error("Offset illegal, please notify RocketMQ Development Team");
+                    return lastPartitionMeta;
 
-            case SLAVE_LAG_BEHIND:
-                LOG.warn("Master node is down and slave replication is lagged behind.");
-                return lastPartitionMeta;
+                case SLAVE_LAG_BEHIND:
+                    LOG.warn("Master node is down and slave replication is lagged behind.");
+                    return lastPartitionMeta;
 
-            case SUBSCRIPTION_NOT_LATEST:
-                LOG.error("Subscription is not latest, please notify RocketMQ Development Team");
-                return lastPartitionMeta;
+                case SUBSCRIPTION_NOT_LATEST:
+                    LOG.error("Subscription is not latest, please notify RocketMQ Development Team");
+                    return lastPartitionMeta;
 
-            default:
-                LOG.error("Unexpected execution, please notify RocketMQ Development Team");
-                return lastPartitionMeta;
+                default:
+                    LOG.error("Unexpected execution, please notify RocketMQ Development Team");
+                    return lastPartitionMeta;
             }
         }
 
@@ -187,26 +200,30 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
          * Return the metadata that can be used to reconstruct this partition/batch in the future.
          */
         @Override
-        public BatchMessage emitPartitionBatchNew(TransactionAttempt tx, TridentCollector collector, ISpoutPartition partition,
-                BatchMessage lastPartitionMeta) {
+        public BatchMessage emitPartitionBatchNew(TransactionAttempt tx, TridentCollector collector,
+                                                  ISpoutPartition partition, BatchMessage lastPartitionMeta) {
+            final String signature = getClass().getName() + "#emitPartitionBatchNew";
+            LOG.debug("Enter: {}, Params:[tx: {}, partition: {}, lastPartitionMeta: {}]",
+                    signature, tx, partition, lastPartitionMeta);
+
             try {
                 MessageQueue mq = getMessageQueue(config.getTopic()).get(Integer.parseInt(partition.getId()));
 
                 long index = 0;
-                if ( null == lastPartitionMeta ) {
+                if (null == lastPartitionMeta) {
                     index = getConsumer().fetchConsumeOffset(mq, true);
-                    if ( index < 0 ) {
+                    if (index < 0) {
                         index = 0;
                     }
                 } else {
                     index = lastPartitionMeta.getNextOffset();
                 }
 
+                LOG.debug("Begin to pull[MessageQueue: {}, tag: {}, index: {}, maxNum: {}]",
+                        mq, config.getTopicTag(), index, config.getPullBatchSize());
                 PullResult result = getConsumer().pull(mq, config.getTopicTag(), index, config.getPullBatchSize());
-                LOG.debug("partion={},lastPartitionMeta={},index={},pullResult={}", partition.getId(), JSONObject.toJSON(lastPartitionMeta), index,
-                          JSONObject.toJSONString(result));
                 return handlePullResult(tx, collector, result, mq, lastPartitionMeta);
-            } catch ( MQClientException | RemotingException | MQBrokerException | InterruptedException e ) {
+            } catch (MQClientException | RemotingException | MQBrokerException | InterruptedException e) {
                 LOG.error("Pull Failed.", e);
                 return lastPartitionMeta;
             }
@@ -223,16 +240,17 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
          */
         @Override
         public void emitPartitionBatch(TransactionAttempt tx, TridentCollector collector, ISpoutPartition partition, BatchMessage partitionMeta) {
-
+            final String signature = getClass().getName() + "#emitPartitionBatch";
+            LOG.debug("Enter {}", signature);
             try {
                 MessageQueue mq = getMessageQueue(config.getTopic()).get(Integer.parseInt(partition.getId()));
                 int batchSize = (int) (partitionMeta.getNextOffset() - partitionMeta.getOffset());
                 PullResult result = getConsumer().pull(mq, config.getTopicTag(), partitionMeta.getOffset(), batchSize);
                 BatchMessage batchMessage = handlePullResult(tx, collector, result, mq, partitionMeta);
-                if ( batchMessage == partitionMeta ) {
+                if (batchMessage == partitionMeta) {
                     throw new RuntimeException("Pull failed, refer to log for details.");
                 }
-            } catch ( Exception e ) {
+            } catch (Exception e) {
                 LOG.error("Pull failed", e);
                 throw new RuntimeException("Pull failed, refer to log file for details.", e);
             }
@@ -246,16 +264,17 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
     }
 
     @Override
-    public Coordinator<List<MessageQueue>> getCoordinator(@SuppressWarnings( "rawtypes" ) Map conf, TopologyContext context) {
+    public Coordinator<List<MessageQueue>> getCoordinator(@SuppressWarnings("rawtypes") Map conf, TopologyContext context) {
         return new RocketMQCoordinator();
     }
 
     @Override
-    public Emitter<List<MessageQueue>, ISpoutPartition, BatchMessage> getEmitter(@SuppressWarnings( "rawtypes" ) Map conf, TopologyContext context) {
+    public Emitter<List<MessageQueue>, ISpoutPartition, BatchMessage> getEmitter(@SuppressWarnings("rawtypes") Map conf, TopologyContext context) {
         return new RocketMQEmitter();
     }
 
-    @SuppressWarnings( "rawtypes" ) @Override
+    @SuppressWarnings("rawtypes")
+    @Override
     public Map getComponentConfiguration() {
         return null;
     }
