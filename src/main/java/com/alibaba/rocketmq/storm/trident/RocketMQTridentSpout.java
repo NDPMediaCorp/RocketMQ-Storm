@@ -133,8 +133,9 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
                                               MessageQueue mq, BatchMessage lastPartitionMeta)
                 throws MQClientException {
             final String signature = getClass().getName() + "#handlePullResult";
-            LOG.debug("Enter {}", signature);
-            LOG.debug("PullResult status: {}", result.getPullStatus().name());
+            LOG.debug("PullResult status: {}, maxOffset:{}, nextBeginOffset: {}, signature:{}, mq:{}, lastPartitionMeta:{}",
+                      result.getPullStatus().name(), result.getMaxOffset(),result.getNextBeginOffset(),
+                      signature, mq, lastPartitionMeta);
             switch (result.getPullStatus()) {
                 case FOUND:
                     BatchMessage batchMessages = null;
