@@ -14,7 +14,7 @@ public class RocketMQConfig implements Serializable {
     /**
      * Unique mark for every JVM instance
      */
-    private String            instanceName;
+    private String            instanceName = "DEFAULT";
     /**
      * Group by message actor
      */
@@ -39,7 +39,7 @@ public class RocketMQConfig implements Serializable {
      * If piled-up message exceeds this value,adjust consumer thread to max
      * value dynamically
      */
-    private long              adjustThreadPoolNumsThreshold = 100000l;
+    private long              adjustThreadPoolNumsThreshold = 100000L;
     /**
      * Local message queue threshold, trigger flow control if exceeds this value
      */
