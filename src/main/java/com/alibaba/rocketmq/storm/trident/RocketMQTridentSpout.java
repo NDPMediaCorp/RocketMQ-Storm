@@ -254,7 +254,13 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
             LOG.debug("Enter {}", signature);
             try {
                 MessageQueue mq = getMessageQueue(config.getTopic()).get(Integer.parseInt(partition.getId()));
+
                 int batchSize = (int) (partitionMeta.getNextOffset() - partitionMeta.getOffset());
+                if (batchSize <= 0) {
+                    // Skip this batch.
+                    return;
+                }
+
                 PullResult result = getConsumer().pull(mq, config.getTopicTag(), partitionMeta.getOffset(), batchSize);
                 BatchMessage batchMessage = handlePullResult(tx, collector, result, mq, partitionMeta);
                 if (batchMessage.equals(partitionMeta)) {
