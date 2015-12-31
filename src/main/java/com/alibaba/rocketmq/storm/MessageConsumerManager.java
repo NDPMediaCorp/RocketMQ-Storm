@@ -51,6 +51,7 @@ public class MessageConsumerManager {
                     DefaultMQPullConsumer.class);
             pullConsumer.setConsumerGroup(config.getGroupId());
             pullConsumer.setMessageModel(MessageModel.CLUSTERING);
+            pullConsumer.setPersistConsumerOffsetInterval(Integer.MAX_VALUE);
             //pullConsumer.setRegisterTopics(Sets.newHashSet(config.getTopic()));
             //pullConsumer.setNamesrvAddr(null);
             return pullConsumer;

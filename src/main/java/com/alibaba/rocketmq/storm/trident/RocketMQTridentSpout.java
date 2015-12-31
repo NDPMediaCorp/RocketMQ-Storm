@@ -1,9 +1,6 @@
 package com.alibaba.rocketmq.storm.trident;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentMap;
 
 import com.alibaba.rocketmq.client.consumer.MQPullConsumer;
@@ -145,7 +142,7 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
                     if (null != config.getTopicTag() && !"*".equals(config.getTopicTag())) {
                         String[] tags = config.getTopicTag().split("\\|\\|");
                         List<MessageExt> filteredMsgs = Lists.newArrayList();
-                        if (null != msgs && !msgs.isEmpty()) {
+                        if (!msgs.isEmpty()) {
                             for (MessageExt msg : msgs) {
                                 for (String tag : tags) {
                                     if (tag.equals(msg.getTags())) {
@@ -158,16 +155,18 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
                         msgs = filteredMsgs;
                     }
 
-                    if (null != msgs && msgs.size() > 0) {
+                    if (msgs.size() > 0) {
                         batchMessages = new BatchMessage(msgs, mq);
                         batchMessages.setOffset(result.getMinOffset());
                         batchMessages.setNextOffset(result.getNextBeginOffset());
                         for (MessageExt msg : msgs) {
                             collector.emit(Lists.newArrayList(tx, msg));
                         }
-                        getConsumer().updateConsumeOffset(mq, result.getMaxOffset());
                         assert result.getMaxOffset() == batchMessages.getNextOffset() - 1;
                     }
+                    getConsumer().updateConsumeOffset(mq, result.getMaxOffset());
+                    DefaultMQPullConsumer defaultMQPullConsumer = (DefaultMQPullConsumer)getConsumer();
+                    defaultMQPullConsumer.getOffsetStore().persist(mq);
                     return batchMessages;
 
                 case NO_NEW_MSG:
@@ -201,8 +200,11 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
          * Return the metadata that can be used to reconstruct this partition/batch in the future.
          */
         @Override
-        public BatchMessage emitPartitionBatchNew(TransactionAttempt tx, TridentCollector collector,
-                                                  ISpoutPartition partition, BatchMessage lastPartitionMeta) {
+        public BatchMessage emitPartitionBatchNew(TransactionAttempt tx, //
+                                                  TridentCollector collector, //
+                                                  ISpoutPartition partition, //
+                                                  BatchMessage lastPartitionMeta //
+        ) {
             final String signature = getClass().getName() + "#emitPartitionBatchNew";
             LOG.debug("Enter: {}, Params:[tx: {}, partition: {}, lastPartitionMeta: {}]",
                     signature, tx, partition, lastPartitionMeta);
@@ -212,7 +214,7 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
 
                 long index = 0;
                 if (null == lastPartitionMeta) {
-                    index = getConsumer().fetchConsumeOffset(mq, true);
+                    index = getConsumer().fetchConsumeOffset(mq, false);
                     if (index < 0) {
                         index = 0;
                     }
@@ -240,7 +242,11 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
          * the metadata created when it was first emitted.
          */
         @Override
-        public void emitPartitionBatch(TransactionAttempt tx, TridentCollector collector, ISpoutPartition partition, BatchMessage partitionMeta) {
+        public void emitPartitionBatch(TransactionAttempt tx, //
+                                       TridentCollector collector, //
+                                       ISpoutPartition partition, //
+                                       BatchMessage partitionMeta //
+        ) {
             final String signature = getClass().getName() + "#emitPartitionBatch";
             LOG.debug("Enter {}", signature);
             try {
