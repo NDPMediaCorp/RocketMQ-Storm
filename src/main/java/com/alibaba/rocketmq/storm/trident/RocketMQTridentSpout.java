@@ -50,7 +50,6 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
             synchronized (this) {
                 if (null == consumer) {
                     consumer = (DefaultMQPullConsumer) MessageConsumerManager.getConsumerInstance(config, null, false);
-                    consumer.setInstanceName(UUID.randomUUID().toString());
                     consumer.start();
                 }
             }
