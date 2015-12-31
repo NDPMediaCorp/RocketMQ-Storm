@@ -193,7 +193,7 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
             }
 
             BatchMessage batchMessage = new BatchMessage();
-            batchMessage.setOffset(result.getNextBeginOffset() - 1);
+            batchMessage.setOffset(result.getNextBeginOffset());
             batchMessage.setNextOffset(result.getNextBeginOffset());
             return batchMessage;
         }
