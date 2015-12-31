@@ -1,8 +1,5 @@
 package com.alibaba.rocketmq.storm;
 
-import com.alibaba.rocketmq.client.consumer.store.RemoteBrokerOffsetStore;
-import com.alibaba.rocketmq.client.impl.MQClientManager;
-import com.alibaba.rocketmq.client.impl.factory.MQClientInstance;
 import com.alibaba.rocketmq.common.MixAll;
 import org.apache.commons.lang.BooleanUtils;
 import org.slf4j.Logger;
@@ -16,57 +13,35 @@ import com.alibaba.rocketmq.client.exception.MQClientException;
 import com.alibaba.rocketmq.common.consumer.ConsumeFromWhere;
 import com.alibaba.rocketmq.common.protocol.heartbeat.MessageModel;
 import com.alibaba.rocketmq.storm.domain.RocketMQConfig;
-import com.alibaba.rocketmq.storm.internal.tools.FastBeanUtils;
-import com.google.common.collect.Sets;
 
 /**
  * @author Von Gosling
  */
 public class MessageConsumerManager {
 
-    private static final Logger          LOG = LoggerFactory
-                                                     .getLogger(MessageConsumerManager.class);
-    private static DefaultMQPushConsumer pushConsumer;
-    private static DefaultMQPullConsumer pullConsumer;
+    private static final Logger LOG = LoggerFactory.getLogger(MessageConsumerManager.class);
 
     MessageConsumerManager() {
     }
 
-    public static MQConsumer getConsumerInstance(RocketMQConfig config, MessageListener listener,
+    public static MQConsumer getConsumerInstance(RocketMQConfig config,
+                                                 MessageListener listener,
                                                  Boolean isPushlet) throws MQClientException {
         LOG.info("Begin to init consumer,instanceName->{},configuration->{}",
-                new Object[] { config.getInstanceName(), config });
+                new Object[]{config.getInstanceName(), config});
         LOG.info("----------------------------------------------- Enable SSL: " + System.getProperty("enable_ssl"));
         LOG.info("----------------------------------------------- rocketmq.namesrv.domain: " + MixAll.WS_DOMAIN_NAME);
         if (BooleanUtils.isTrue(isPushlet)) {
-            pushConsumer = (DefaultMQPushConsumer) FastBeanUtils.copyProperties(config,
-                    DefaultMQPushConsumer.class);
-            pushConsumer.setConsumerGroup(config.getGroupId());
+            DefaultMQPushConsumer pushConsumer = new DefaultMQPushConsumer(config.getGroupId());
             pushConsumer.setConsumeFromWhere(ConsumeFromWhere.CONSUME_FROM_LAST_OFFSET);
-
             pushConsumer.subscribe(config.getTopic(), config.getTopicTag());
             pushConsumer.setMessageModel(MessageModel.CLUSTERING);
             pushConsumer.registerMessageListener(listener);
-            //pushConsumer.setNamesrvAddr(null);
             return pushConsumer;
         } else {
-            pullConsumer = (DefaultMQPullConsumer) FastBeanUtils.copyProperties(config,
-                    DefaultMQPullConsumer.class);
-            pullConsumer.setConsumerGroup(config.getGroupId());
+            DefaultMQPullConsumer pullConsumer = new DefaultMQPullConsumer(config.getGroupId());
             pullConsumer.setMessageModel(MessageModel.CLUSTERING);
             pullConsumer.setPersistConsumerOffsetInterval(Integer.MAX_VALUE);
-            if (pullConsumer.getInstanceName() == null) {
-                pullConsumer.setInstanceName(RocketMQConfig.DEFAULT_INSTANCE_NAME);
-            }
-
-            // For cluster mode
-            pullConsumer.changeInstanceNameToPID();
-            MQClientInstance clientInstance = MQClientManager.getInstance().getAndCreateMQClientInstance(pullConsumer, null);
-            RemoteBrokerOffsetStore offsetStore = new RemoteBrokerOffsetStore(clientInstance, config.getGroupId());
-            pullConsumer.setOffsetStore(offsetStore);
-
-            //pullConsumer.setRegisterTopics(Sets.newHashSet(config.getTopic()));
-            //pullConsumer.setNamesrvAddr(null);
             return pullConsumer;
         }
     }

@@ -161,7 +161,6 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
                         for (MessageExt msg : msgs) {
                             collector.emit(Lists.newArrayList(tx, msg));
                         }
-                        assert result.getMaxOffset() == batchMessages.getNextOffset() - 1;
                     }
                     getConsumer().updateConsumeOffset(mq, result.getMaxOffset());
                     DefaultMQPullConsumer defaultMQPullConsumer = (DefaultMQPullConsumer)getConsumer();
@@ -218,7 +217,7 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
 
                 long index = 0;
                 if (null == lastPartitionMeta) {
-                    index = getConsumer().fetchConsumeOffset(mq, false);
+                    index = getConsumer().fetchConsumeOffset(mq, false) + 1;
                     if (index < 0) {
                         index = 0;
                     }
