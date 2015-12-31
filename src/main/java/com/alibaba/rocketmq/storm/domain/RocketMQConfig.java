@@ -11,10 +11,12 @@ import org.apache.commons.lang.builder.ToStringStyle;
 public class RocketMQConfig implements Serializable {
     private static final long serialVersionUID              = 4157424979688590880L;
 
+    public static final String DEFAULT_INSTANCE_NAME = "DEFAULT";
+
     /**
      * Unique mark for every JVM instance
      */
-    private String            instanceName = "DEFAULT";
+    private String            instanceName = DEFAULT_INSTANCE_NAME;
     /**
      * Group by message actor
      */

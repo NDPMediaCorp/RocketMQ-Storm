@@ -55,6 +55,9 @@ public class MessageConsumerManager {
             pullConsumer.setConsumerGroup(config.getGroupId());
             pullConsumer.setMessageModel(MessageModel.CLUSTERING);
             pullConsumer.setPersistConsumerOffsetInterval(Integer.MAX_VALUE);
+            if (pullConsumer.getInstanceName() == null) {
+                pullConsumer.setInstanceName(RocketMQConfig.DEFAULT_INSTANCE_NAME);
+            }
 
             // For cluster mode
             pullConsumer.changeInstanceNameToPID();
