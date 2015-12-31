@@ -103,4 +103,21 @@ public class BatchMessage {
         return ToStringBuilder.reflectionToString(this, ToStringStyle.SHORT_PREFIX_STYLE);
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        BatchMessage that = (BatchMessage) o;
+
+        return nextOffset == that.nextOffset && offset == that.offset;
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = (int) (nextOffset ^ (nextOffset >>> 32));
+        result = 31 * result + (int) (offset ^ (offset >>> 32));
+        return result;
+    }
 }

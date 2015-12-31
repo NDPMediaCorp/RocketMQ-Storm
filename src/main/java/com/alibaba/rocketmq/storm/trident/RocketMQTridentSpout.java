@@ -171,11 +171,11 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
 
                 case NO_NEW_MSG:
                     LOG.debug("No new messages for this pull request.");
-                    return lastPartitionMeta;
+                    break;
 
                 case NO_MATCHED_MSG:
                     LOG.debug("No matched messages for this pull request");
-                    return lastPartitionMeta;
+                    break;
 
                 case OFFSET_ILLEGAL:
                     LOG.error("Offset illegal, please notify RocketMQ Development Team");
@@ -183,16 +183,21 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
 
                 case SLAVE_LAG_BEHIND:
                     LOG.warn("Master node is down and slave replication is lagged behind.");
-                    return lastPartitionMeta;
+                    break;
 
                 case SUBSCRIPTION_NOT_LATEST:
                     LOG.error("Subscription is not latest, please notify RocketMQ Development Team");
-                    return lastPartitionMeta;
+                    break;
 
                 default:
                     LOG.error("Unexpected execution, please notify RocketMQ Development Team");
-                    return lastPartitionMeta;
+                    break;
             }
+
+            BatchMessage batchMessage = new BatchMessage();
+            batchMessage.setOffset(result.getNextBeginOffset() - 1);
+            batchMessage.setNextOffset(result.getNextBeginOffset());
+            return batchMessage;
         }
 
         /**
@@ -254,7 +259,7 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
                 int batchSize = (int) (partitionMeta.getNextOffset() - partitionMeta.getOffset());
                 PullResult result = getConsumer().pull(mq, config.getTopicTag(), partitionMeta.getOffset(), batchSize);
                 BatchMessage batchMessage = handlePullResult(tx, collector, result, mq, partitionMeta);
-                if (batchMessage == partitionMeta) {
+                if (batchMessage.equals(partitionMeta)) {
                     throw new RuntimeException("Pull failed, refer to log for details.");
                 }
             } catch (Exception e) {

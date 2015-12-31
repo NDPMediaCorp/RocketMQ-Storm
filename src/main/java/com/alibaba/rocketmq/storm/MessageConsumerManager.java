@@ -1,5 +1,8 @@
 package com.alibaba.rocketmq.storm;
 
+import com.alibaba.rocketmq.client.consumer.store.RemoteBrokerOffsetStore;
+import com.alibaba.rocketmq.client.impl.MQClientManager;
+import com.alibaba.rocketmq.client.impl.factory.MQClientInstance;
 import com.alibaba.rocketmq.common.MixAll;
 import org.apache.commons.lang.BooleanUtils;
 import org.slf4j.Logger;
@@ -52,6 +55,13 @@ public class MessageConsumerManager {
             pullConsumer.setConsumerGroup(config.getGroupId());
             pullConsumer.setMessageModel(MessageModel.CLUSTERING);
             pullConsumer.setPersistConsumerOffsetInterval(Integer.MAX_VALUE);
+
+            // For cluster mode
+            pullConsumer.changeInstanceNameToPID();
+            MQClientInstance clientInstance = MQClientManager.getInstance().getAndCreateMQClientInstance(pullConsumer, null);
+            RemoteBrokerOffsetStore offsetStore = new RemoteBrokerOffsetStore(clientInstance, config.getGroupId());
+            pullConsumer.setOffsetStore(offsetStore);
+
             //pullConsumer.setRegisterTopics(Sets.newHashSet(config.getTopic()));
             //pullConsumer.setNamesrvAddr(null);
             return pullConsumer;
