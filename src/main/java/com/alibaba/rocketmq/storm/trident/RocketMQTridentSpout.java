@@ -119,17 +119,24 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
 
             final String signature = getClass().getName() + "#getOrderedPartitions";
             LOG.debug("Enter: {}, Params: {}", signature, allPartitionInfo);
-            Collections.sort(allPartitionInfo);
             final List<ISpoutPartition> partition = Lists.newArrayList();
-            final AtomicInteger index = new AtomicInteger(0);
             for (final MessageQueue queue : allPartitionInfo) {
                 partition.add(new ISpoutPartition() {
                     @Override
                     public String getId() {
-                        String partitionId =  String.valueOf(index.getAndIncrement());
-                        LOG.debug("Partition ID: {}, Broker Name: {}, Queue ID: {}",
-                                partitionId, queue.getBrokerName(), queue.getQueueId());
-                        return partitionId;
+                        try {
+                            int index = getMessageQueue(config.getTopic()).indexOf(queue);
+                            if (index == -1) {
+                                LOG.error("Unexpected fatal error!");
+                            }
+                            String partitionId =  String.valueOf(index);
+                            LOG.debug("Partition ID: {}, Broker Name: {}, Queue ID: {}",
+                                    partitionId, queue.getBrokerName(), queue.getQueueId());
+                            return partitionId;
+                        } catch (MQClientException e) {
+                            LOG.error("Unexpected fatal error", e);
+                            return null;
+                        }
                     }
                 });
             }
