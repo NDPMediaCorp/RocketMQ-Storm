@@ -180,7 +180,7 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
                         collector.emit(Lists.newArrayList(tx, msg));
                     }
 
-                    getConsumer().updateConsumeOffset(mq, result.getNextBeginOffset());
+                    getConsumer().updateConsumeOffset(mq, result.getNextBeginOffset(), true);
                     DefaultMQPullConsumer defaultMQPullConsumer = (DefaultMQPullConsumer) getConsumer();
                     defaultMQPullConsumer.getOffsetStore().persist(mq);
                     return batchMessages;
