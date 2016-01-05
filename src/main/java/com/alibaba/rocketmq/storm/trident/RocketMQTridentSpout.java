@@ -155,11 +155,21 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
                 }
 
                 batchMessages = new BatchMessage(msgs, mq);
-                batchMessages.setOffset(result.getMinOffset());
                 batchMessages.setNextOffset(result.getNextBeginOffset());
-                for ( MessageExt msg : msgs ) {
-                    collector.emit(Lists.newArrayList(tx, msg));
+
+                if (!msgs.isEmpty()) {
+                    long offset = Long.MAX_VALUE;
+                    for ( MessageExt msg : msgs ) {
+                        if (msg.getQueueOffset() < offset) {
+                            offset = msg.getQueueOffset();
+                        }
+                        collector.emit(Lists.newArrayList(tx, msg));
+                    }
+                    batchMessages.setOffset(offset);
+                } else {
+                    batchMessages.setOffset(result.getNextBeginOffset());
                 }
+
                 getConsumer().updateConsumeOffset(mq, result.getNextBeginOffset());
                 DefaultMQPullConsumer defaultMQPullConsumer = (DefaultMQPullConsumer) getConsumer();
                 defaultMQPullConsumer.getOffsetStore().persist(mq);
