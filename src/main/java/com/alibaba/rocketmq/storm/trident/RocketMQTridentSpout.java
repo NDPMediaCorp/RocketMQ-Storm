@@ -2,6 +2,7 @@ package com.alibaba.rocketmq.storm.trident;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.alibaba.rocketmq.client.consumer.MQPullConsumer;
 import org.slf4j.Logger;
@@ -67,6 +68,12 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
             // Fetches all message queues from name server.
             Set<MessageQueue> mqs = getConsumer().fetchSubscribeMessageQueues(topic);
             cachedQueue = Lists.newArrayList(mqs);
+            Collections.sort(cachedQueue);
+            if (LOG.isDebugEnabled()) {
+                for (MessageQueue queue : cachedQueue) {
+                    LOG.debug("Broker Name: {}, Queue ID: {}", queue.getBrokerName(), queue.getQueueId());
+                }
+            }
             cachedMessageQueue.put(topic, cachedQueue);
         }
         return cachedQueue;
@@ -108,18 +115,21 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
     class RocketMQEmitter implements Emitter<List<MessageQueue>, ISpoutPartition, BatchMessage> {
 
         @Override
-        public List<ISpoutPartition> getOrderedPartitions(List<MessageQueue> allPartitionInfo) {
+        public List<ISpoutPartition> getOrderedPartitions(final List<MessageQueue> allPartitionInfo) {
 
             final String signature = getClass().getName() + "#getOrderedPartitions";
             LOG.debug("Enter: {}, Params: {}", signature, allPartitionInfo);
-
-            List<ISpoutPartition> partition = Lists.newArrayList();
+            Collections.sort(allPartitionInfo);
+            final List<ISpoutPartition> partition = Lists.newArrayList();
+            final AtomicInteger index = new AtomicInteger(0);
             for (final MessageQueue queue : allPartitionInfo) {
                 partition.add(new ISpoutPartition() {
-
                     @Override
                     public String getId() {
-                        return String.valueOf(queue.getQueueId());
+                        String partitionId =  String.valueOf(index.getAndIncrement());
+                        LOG.debug("Partition ID: {}, Broker Name: {}, Queue ID: {}",
+                                partitionId, queue.getBrokerName(), queue.getQueueId());
+                        return partitionId;
                     }
                 });
             }
@@ -274,7 +284,6 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
             LOG.debug("Thread ID:{}, Enter: {}, Params:[tx: {}, partition: {}, partitionMeta: {}]", signature, tx, partition.getId(), partitionMeta, Thread.currentThread().getId());
             try {
                 MessageQueue mq = getMessageQueue(config.getTopic()).get(Integer.parseInt(partition.getId()));
-
                 int batchSize = (int) (partitionMeta.getNextOffset() - partitionMeta.getOffset());
                 if (batchSize <= 0) {
                     // Skip this batch.
