@@ -129,14 +129,32 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
         private BatchMessage handlePullResult(TransactionAttempt tx, TridentCollector collector, PullResult result, MessageQueue mq,
                 BatchMessage lastPartitionMeta) throws MQClientException {
             final String signature = getClass().getName() + "#handlePullResult";
-            LOG.debug("PullResult status: {}, maxOffset:{}, nextBeginOffset: {}, signature:{}, mq:{}, lastPartitionMeta:{}, thread:{}",
-                      result.getPullStatus().name(),
-                      result.getMaxOffset(), result.getNextBeginOffset(), signature, mq, lastPartitionMeta, Thread.currentThread().getId());
+            LOG.debug("Enter {}, Params[lastPartitionMeta: {}, mq: {}], Thread: {}", signature, lastPartitionMeta, mq,
+                    Thread.currentThread().getId());
+            LOG.debug("Pull Status: {}", result.getPullStatus().name());
             switch ( result.getPullStatus() ) {
             case FOUND:
                 BatchMessage batchMessages = null;
                 List<MessageExt> msgs = result.getMsgFoundList();
-                LOG.debug("MessageFoundList size: {}", msgs.size());
+
+
+                // Figure out from and to offsets for this batch.
+                long fromOffset = Long.MAX_VALUE;
+                long toOffset = Long.MIN_VALUE;
+                for (MessageExt msg : msgs) {
+                    if (msg.getQueueOffset() < fromOffset) {
+                        fromOffset = msg.getQueueOffset();
+                    }
+
+                    if (msg.getQueueOffset() > toOffset) {
+                        toOffset = msg.getQueueOffset();
+                    }
+                }
+
+                LOG.debug("Offset[From(inclusive): {}, To(inclusive): {}, Min: {}, Max: {}, Next: {}], Message Count: {}",
+                        fromOffset, toOffset, result.getMinOffset(), result.getMaxOffset(), result.getNextBeginOffset(),
+                        msgs.size());
+
                 // Filter message by tag.
                 if ( null != config.getTopicTag() && !"*".equals(config.getTopicTag()) ) {
                     String[] tags = config.getTopicTag().split("\\|\\|");
@@ -155,19 +173,11 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
                 }
 
                 batchMessages = new BatchMessage(msgs, mq);
+                batchMessages.setOffset(fromOffset);
                 batchMessages.setNextOffset(result.getNextBeginOffset());
 
-                if (!msgs.isEmpty()) {
-                    long offset = Long.MAX_VALUE;
-                    for ( MessageExt msg : msgs ) {
-                        if (msg.getQueueOffset() < offset) {
-                            offset = msg.getQueueOffset();
-                        }
-                        collector.emit(Lists.newArrayList(tx, msg));
-                    }
-                    batchMessages.setOffset(offset);
-                } else {
-                    batchMessages.setOffset(result.getNextBeginOffset());
+                for ( MessageExt msg : msgs ) {
+                    collector.emit(Lists.newArrayList(tx, msg));
                 }
 
                 getConsumer().updateConsumeOffset(mq, result.getNextBeginOffset());
@@ -200,6 +210,8 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
                 break;
             }
 
+            LOG.debug("Next Offset: {}", result.getNextBeginOffset());
+
             BatchMessage batchMessage = new BatchMessage();
             batchMessage.setOffset(result.getNextBeginOffset());
             batchMessage.setNextOffset(result.getNextBeginOffset());
@@ -217,7 +229,7 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
                 BatchMessage lastPartitionMeta //
         ) {
             final String signature = getClass().getName() + "#emitPartitionBatchNew";
-            LOG.debug("Enter: {}, Params:[tx: {}, partition: {}, lastPartitionMeta: {}, thread:{}]", signature, tx, partition.getId(), lastPartitionMeta,
+            LOG.debug("Enter: {}, Params:[tx: {}, partition: {}, lastPartitionMeta: {}] Thread ID: {}", signature, tx, partition.getId(), lastPartitionMeta,
                       Thread.currentThread().getId());
 
             try {
@@ -272,11 +284,10 @@ public class RocketMQTridentSpout implements IPartitionedTridentSpout<List<Messa
                 PullResult result = getConsumer().pull(mq, config.getTopicTag(), partitionMeta.getOffset(), batchSize);
                 BatchMessage batchMessage = handlePullResult(tx, collector, result, mq, partitionMeta);
                 if ( batchMessage.equals(partitionMeta) ) {
-                    throw new RuntimeException("Pull failed, refer to log for details.");
+                    LOG.error("Pull failed. Pull Result: {}, Handle Result: {}", result, batchMessage);
                 }
             } catch ( Exception e ) {
                 LOG.error("Pull failed", e);
-                throw new RuntimeException("Pull failed, refer to log file for details.", e);
             }
         }
 
