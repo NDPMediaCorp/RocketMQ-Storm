@@ -70,6 +70,11 @@ public class RocketMQConfig implements Serializable {
      */
     private int               maxFailTimes                  = 5;
 
+    /**
+     * BatchRocketMQSpout buffer size
+     */
+    private int               batchMsgSize                  = 256;
+
     public RocketMQConfig() {
     }
 
@@ -261,6 +266,14 @@ public class RocketMQConfig implements Serializable {
      */
     public void setMaxFailTimes(int maxFailTimes) {
         this.maxFailTimes = maxFailTimes;
+    }
+
+    public int getBatchMsgSize() {
+        return batchMsgSize;
+    }
+
+    public void setBatchMsgSize(int batchMsgSize) {
+        this.batchMsgSize = batchMsgSize;
     }
 
     @Override
