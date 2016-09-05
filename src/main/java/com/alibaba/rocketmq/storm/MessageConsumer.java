@@ -29,7 +29,6 @@ public class MessageConsumer implements Serializable {
     public void start(MessageListener listener) throws Exception {
         consumer = (DefaultMQPushConsumer) MessageConsumerManager.getConsumerInstance(config,
                 listener, true);
-
         this.consumer.start();
 
         LOG.info("Init consumer successfully,configuration->{}", config);

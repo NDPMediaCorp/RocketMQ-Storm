@@ -64,18 +64,6 @@ public class RocketMQConsumer implements ICommitter {
 
     }
 
-    private List<MessageQueue> getMessageQueue(String topic) throws MQClientException {
-        List<MessageQueue> cachedQueue = cachedMessageQueue.get(topic);
-        if ( cachedQueue == null ) {
-            // Fetches all message queues from name server.
-            Set<MessageQueue> mqs = consumer.fetchSubscribeMessageQueues(topic);
-            cachedQueue = Lists.newArrayList(mqs);
-            Collections.sort(cachedQueue);
-            cachedMessageQueue.put(topic, cachedQueue);
-        }
-        return cachedQueue;
-    }
-
     protected Map<MessageQueue, Long> initOffset() throws MQClientException {
         List<MessageQueue> queues = getMessageQueue(rocketMQConfig.getTopic());
 
@@ -207,6 +195,18 @@ public class RocketMQConsumer implements ICommitter {
         }
     }
 
+    private List<MessageQueue> getMessageQueue(String topic) throws MQClientException {
+        List<MessageQueue> cachedQueue = cachedMessageQueue.get(topic);
+        if ( cachedQueue == null ) {
+            // Fetches all message queues from name server.
+            Set<MessageQueue> mqs = consumer.fetchSubscribeMessageQueues(topic);
+            cachedQueue = Lists.newArrayList(mqs);
+            Collections.sort(cachedQueue);
+            cachedMessageQueue.put(topic, cachedQueue);
+        }
+        return cachedQueue;
+    }
+
     public List<MessageExt> batchFetchMessage() {
         List<MessageExt> ret = new ArrayList<>();
 
@@ -219,7 +219,7 @@ public class RocketMQConsumer implements ICommitter {
 
             while ( fetchSize < pullSize ) {
 
-                PullResult pullResult = null;
+                PullResult pullResult;
                 try {
                     pullResult = consumer.pullBlockIfNotFound(mq, rocketMQConfig.getTopicTag(), offset, pullSize);
 
