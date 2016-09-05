@@ -37,12 +37,13 @@ public class MessageConsumerManager {
             pushConsumer.subscribe(config.getTopic(), config.getTopicTag());
             pushConsumer.setMessageModel(MessageModel.CLUSTERING);
             pushConsumer.registerMessageListener(listener);
+            pushConsumer.setInstanceName(config.getInstanceName());
             return pushConsumer;
         } else {
             DefaultMQPullConsumer pullConsumer = new DefaultMQPullConsumer(config.getGroupId());
             pullConsumer.setMessageModel(MessageModel.CLUSTERING);
             pullConsumer.setPersistConsumerOffsetInterval(Integer.MAX_VALUE);
-
+            pullConsumer.setInstanceName(config.getInstanceName());
             // reset maximum hold up time.
             pullConsumer.setBrokerSuspendMaxTimeMillis(10 * 1000);
             pullConsumer.setConsumerPullTimeoutMillis(15 * 1000);
